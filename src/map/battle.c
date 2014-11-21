@@ -2621,7 +2621,7 @@ static struct Damage battle_calc_element_damage(struct Damage wd, struct block_l
 		}
 		if (is_attack_left_handed(src, skill_id) && wd.damage2 > 0)
 			wd.damage2 = battle_attr_fix(src, target, wd.damage2, left_element ,tstatus->def_ele, tstatus->ele_lv);
-		if (sc && sc->data[SC_WATK_ELEMENT]) {
+		if (sc && sc->data[SC_WATK_ELEMENT] && (wd.damage || wd.damage2)) {
 			// Descriptions indicate this means adding a percent of a normal attack in another element. [Skotlex]
 			int64 damage = battle_calc_base_damage(sstatus, &sstatus->rhw, sc, tstatus->size, sd, (is_skill_using_arrow(src, skill_id)?2:0)) * sc->data[SC_WATK_ELEMENT]->val2 / 100;
 
@@ -3194,7 +3194,10 @@ static int battle_calc_attack_skill_ratio(struct Damage wd, struct block_list *s
 			break;
 		case SM_MAGNUM:
 		case MS_MAGNUM:
-			skillratio += 20*skill_lv;
+			if(wd.miscflag == 1)
+				skillratio += 20*skill_lv; //Inner 3x3 circle takes 100%+20%*level damage [Playtester]
+			else
+				skillratio += 10*skill_lv; //Outer 5x5 circle takes 100%+10%*level damage [Playtester]
 			break;
 		case MC_MAMMONITE:
 			skillratio += 50*skill_lv;
@@ -5486,9 +5489,9 @@ struct Damage battle_calc_magic_attack(struct block_list *src,struct block_list 
 						break;
 					case WZ_FIREPILLAR:
 						if (skill_lv > 10)
-							skillratio += 100;
+							skillratio += 2300; //200% MATK each hit
 						else
-							skillratio -= 80;
+							skillratio += -60 + 20*skill_lv; //20% MATK each hit
 						break;
 					case WZ_SIGHTRASHER:
 						skillratio += 20*skill_lv;
@@ -5843,7 +5846,7 @@ struct Damage battle_calc_magic_attack(struct block_list *src,struct block_list 
 
 				//Constant/misc additions from skills
 				if (skill_id == WZ_FIREPILLAR)
-					MATK_ADD(50);
+					MATK_ADD(100+50*skill_lv);
 			}
 		}
 #ifdef RENEWAL
@@ -7889,6 +7892,7 @@ static const struct _battle_data {
 	{ "feature.autotrade_sit",				&battle_config.feature_autotrade_sit,			1,		-1,		1,				},
 	{ "feature.autotrade_open_delay",		&battle_config.feature_autotrade_open_delay,	5000,	1000,	INT_MAX,		},
 	{ "disp_serverbank_msg",				&battle_config.disp_serverbank_msg,				0,		0,		1,				},
+	{ "disp_servervip_msg",					&battle_config.disp_servervip_msg,				0,		0,		1,				},
 	{ "warg_can_falcon",                    &battle_config.warg_can_falcon,                 0,      0,      1,              },
 	{ "path_blown_halt",                    &battle_config.path_blown_halt,                 1,      0,      1,              },
 	{ "rental_mount_speed_boost",           &battle_config.rental_mount_speed_boost,        25,     0,      100,        	},
@@ -7921,6 +7925,7 @@ static const struct _battle_data {
 	{ "mob_icewall_walk_block",             &battle_config.mob_icewall_walk_block,          75,     0,      255,            },
 	{ "boss_icewall_walk_block",            &battle_config.boss_icewall_walk_block,         0,      0,      255,            },
 	{ "snap_dodge",                         &battle_config.snap_dodge,                      0,      0,      1,              },
+	{ "stormgust_knockback",                &battle_config.stormgust_knockback,             1,      0,      1,              },
 };
 
 #ifndef STATS_OPT_OUT

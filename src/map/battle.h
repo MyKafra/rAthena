@@ -555,6 +555,7 @@ extern struct Battle_Config
 	int fame_pharmacy_10;
 
 	int disp_serverbank_msg;
+	int disp_servervip_msg;
 	int warg_can_falcon;
 	int path_blown_halt;
 	int rental_mount_speed_boost;
@@ -577,6 +578,7 @@ extern struct Battle_Config
 	int mob_icewall_walk_block; //How a normal monster should be trapped in icewall [Playtester]
 	int boss_icewall_walk_block; //How a boss monster should be trapped in icewall [Playtester]
 	int snap_dodge; // Enable or disable dodging damage snapping away [csnv]
+	int stormgust_knockback;
 } battle_config;
 
 void do_init_battle(void);

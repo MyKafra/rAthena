@@ -2760,7 +2760,8 @@ void skill_attack_blow(struct block_list *src, struct block_list *dsrc, struct b
 			break;
 		// This ensures the storm randomly pushes instead of exactly a cell backwards per official mechanics.
 		case WZ_STORMGUST:
-			dir = rand()%8;
+			if(!battle_config.stormgust_knockback)
+				dir = rand()%8;
 			break;
 		case WL_CRIMSONROCK:
 			dir = map_calc_dir(target,skill_area_temp[4],skill_area_temp[5]);
@@ -3349,9 +3350,12 @@ static int skill_check_unit_range_sub(struct block_list *bl, va_list ap)
 	g_skill_id = unit->group->skill_id;
 
 	switch (skill_id) {
+		case AL_PNEUMA: //Pneuma doesn't work even if just one cell overlaps with Land Protector
+			if(g_skill_id == SA_LANDPROTECTOR)
+				break;
+			//Fall through
 		case MH_STEINWAND:
 		case MG_SAFETYWALL:
-		case AL_PNEUMA:
 		case SC_MAELSTROM:
 		case SO_ELEMENTAL_SHIELD:
 			if(g_skill_id != MH_STEINWAND && g_skill_id != MG_SAFETYWALL && g_skill_id != AL_PNEUMA && g_skill_id != SC_MAELSTROM && g_skill_id != SO_ELEMENTAL_SHIELD)
@@ -3873,7 +3877,8 @@ static int skill_timerskill(int tid, unsigned int tick, int id, intptr_t data)
 						int x = skl->type>>16, y = skl->type&0xFFFF;
 						if( path_search_long(NULL, src->m, src->x, src->y, x, y, CELL_CHKWALL) )
 							skill_unitsetting(src,skl->skill_id,skl->skill_lv,x,y,skl->flag);
-						if( path_search_long(NULL, src->m, src->x, src->y, skl->x, skl->y, CELL_CHKWALL) )
+						if( path_search_long(NULL, src->m, src->x, src->y, skl->x, skl->y, CELL_CHKWALL)
+							&& !map_getcell(src->m, skl->x, skl->y, CELL_CHKLANDPROTECTOR) )
 							clif_skill_poseffect(src,skl->skill_id,skl->skill_lv,skl->x,skl->y,tick);
 					}
 					else if( path_search_long(NULL, src->m, src->x, src->y, skl->x, skl->y, CELL_CHKWALL) )
@@ -4351,8 +4356,6 @@ int skill_castend_damage_id (struct block_list* src, struct block_list *bl, uint
 	case NPC_SPLASHATTACK:
 		flag |= SD_PREAMBLE; // a fake packet will be sent for the first target to be hit
 	case AS_SPLASHER:
-	case SM_MAGNUM:
-	case MS_MAGNUM:
 	case HT_BLITZBEAT:
 	case AC_SHOWER:
 	case MA_SHOWER:
@@ -4465,6 +4468,14 @@ int skill_castend_damage_id (struct block_list* src, struct block_list *bl, uint
 	case WL_COMET:
 		if(!map_getcell(bl->m, bl->x, bl->y, CELL_CHKLANDPROTECTOR)) // Nothing should happen if the target is on Land Protector
 			skill_attack(skill_get_type(skill_id), src, src, bl, skill_id, skill_lv, tick, flag);
+		break;
+		
+	case SM_MAGNUM:
+	case MS_MAGNUM:
+		if( flag&1 ) {
+			//Damage depends on distance, so add it to flag if it is > 1
+			skill_attack(skill_get_type(skill_id), src, src, bl, skill_id, skill_lv, tick, flag|distance_bl(src, bl));
+		}
 		break;
 
 	case KN_BRANDISHSPEAR:
@@ -11098,7 +11109,8 @@ int skill_castend_pos2(struct block_list* src, int x, int y, uint16 skill_id, ui
 				tmpx = x - area + rnd()%(area * 2 + 1);
 				tmpy = y - area + rnd()%(area * 2 + 1);
 
-				if( i == 0 && path_search_long(NULL, src->m, src->x, src->y, tmpx, tmpy, CELL_CHKWALL) )
+				if( i == 0 && path_search_long(NULL, src->m, src->x, src->y, tmpx, tmpy, CELL_CHKWALL)
+					&& !map_getcell(src->m, tmpx, tmpy, CELL_CHKLANDPROTECTOR))
 					clif_skill_poseffect(src,skill_id,skill_lv,tmpx,tmpy,tick);
 
 				if( i > 0 )
@@ -11621,7 +11633,7 @@ int skill_castend_pos2(struct block_list* src, int x, int y, uint16 skill_id, ui
 		{// consume arrow if this is a ground skill
 			battle_consume_ammo(sd, skill_id, skill_lv);
 		}
-
+		skill_onskillusage(sd, NULL, skill_id, tick);
 		// perform skill requirement consumption
 		skill_consume_requirement(sd,skill_id,skill_lv,2);
 	}
@@ -12053,9 +12065,14 @@ struct skill_unit_group *skill_unitsetting(struct block_list *src, uint16 skill_
 		}
 		break;
 	case BA_ASSASSINCROSS:
-		val1 = 100+(10*skill_lv)+status->agi; // ASPD increase
+#ifdef RENEWAL
+		val1 = skill_lv + (status->agi/20); // ASPD increase
+#else
+		val1 = 10 + skill_lv + (status->agi/10); // ASPD increase
+#endif
 		if(sd)
-			val1 += 10*((pc_checkskill(sd,BA_MUSICALLESSON)+1)/2); //aspd +1% per 2lvl
+			val1 += pc_checkskill(sd,BA_MUSICALLESSON)/2;
+		val1*=10; // ASPD works with 1000 as 100%
 		break;
 	case DC_FORTUNEKISS:
 		val1 = 10+skill_lv+(status->luk/10); // Critical increase
@@ -12321,8 +12338,7 @@ struct skill_unit_group *skill_unitsetting(struct block_list *src, uint16 skill_
 			map_foreachincell(skill_maelstrom_suction,src->m,ux,uy,BL_SKILL,skill_id,skill_lv);
 
 		// Check active cell to failing or remove current unit
-		if( range <= 0 )
-			map_foreachincell(skill_cell_overlap,src->m,ux,uy,BL_SKILL,skill_id, &alive, src);
+		map_foreachincell(skill_cell_overlap,src->m,ux,uy,BL_SKILL,skill_id, &alive, src);
 		if( !alive )
 			continue;
 
@@ -12391,7 +12407,7 @@ static int skill_unit_onplace(struct skill_unit *unit, struct block_list *bl, un
 	nullpo_ret(sg = unit->group);
 	nullpo_ret(ss = map_id2bl(sg->src_id));
 
-	if( (skill_get_type(sg->skill_id) == BF_MAGIC && map_getcell(bl->m, bl->x, bl->y, CELL_CHKLANDPROTECTOR) && sg->skill_id != SA_LANDPROTECTOR) ||
+	if( (skill_get_type(sg->skill_id) == BF_MAGIC && map_getcell(unit->bl.m, unit->bl.x, unit->bl.y, CELL_CHKLANDPROTECTOR) && sg->skill_id != SA_LANDPROTECTOR) ||
 		map_getcell(bl->m, bl->x, bl->y, CELL_CHKMAELSTROM) )
 		return 0; //AoE skills are ineffective. [Skotlex]
 
@@ -17305,7 +17321,7 @@ int skill_unit_timer_sub_onplace(struct block_list* bl, va_list ap)
 
 	nullpo_ret(group = unit->group);
 
-	if( !(skill_get_inf2(group->skill_id)&(INF2_SONG_DANCE|INF2_TRAP)) && !(skill_get_inf3(group->skill_id)&(INF3_NOLP)) && group->skill_id != NC_NEUTRALBARRIER && map_getcell(bl->m, bl->x, bl->y, CELL_CHKLANDPROTECTOR) )
+	if( !(skill_get_inf2(group->skill_id)&(INF2_SONG_DANCE|INF2_TRAP)) && !(skill_get_inf3(group->skill_id)&(INF3_NOLP)) && group->skill_id != NC_NEUTRALBARRIER && map_getcell(unit->bl.m, unit->bl.x, unit->bl.y, CELL_CHKLANDPROTECTOR) )
 		return 0; //AoE skills are ineffective. [Skotlex]
 
 	if( battle_check_target(&unit->bl,bl,group->target_flag) <= 0 )

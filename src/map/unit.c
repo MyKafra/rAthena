@@ -92,6 +92,13 @@ int unit_walktoxy_sub(struct block_list *bl)
 	if( !path_search(&wpd,bl->m,bl->x,bl->y,ud->to_x,ud->to_y,ud->state.walk_easy,CELL_CHKNOPASS) )
 		return 0;
 
+#ifdef OFFICIAL_WALKPATH
+	if( !path_search_long(NULL, bl->m, bl->x, bl->y, ud->to_x, ud->to_y, CELL_CHKNOPASS) // Check if there is an obstacle between
+		&& wpd.path_len > 14	// Official number of walkable cells is 14 if and only if there is an obstacle between. [malufett]
+		&& (bl->type != BL_NPC) ) // If type is a NPC, please disregard.
+			return 0;
+#endif
+
 	memcpy(&ud->walkpath,&wpd,sizeof(wpd));
 
 	if (ud->target_to && ud->chaserange>1) {
@@ -469,8 +476,14 @@ static int unit_walktoxy_timer(int tid, unsigned int tick, int id, intptr_t data
 		ud->steptimer = add_timer(tick+i, unit_step_timer, bl->id, 0);
 	}
 
-	if(ud->state.change_walk_target)
-		return unit_walktoxy_sub(bl);
+	if(ud->state.change_walk_target) {
+		if(unit_walktoxy_sub(bl)) {
+			return 1;	
+		} else {
+			clif_fixpos(bl);
+			return 0;
+		}
+	}
 
 	ud->walkpath.path_pos++;
 
@@ -1947,15 +1960,6 @@ int unit_skilluse_pos2( struct block_list *src, short skill_x, short skill_y, ui
 	if( sd ) {
 		if( skill_isNotOk(skill_id, sd) || !skill_check_condition_castbegin(sd, skill_id, skill_lv) )
 			return 0;
-
-		/**
-		 * Pneuma cannot be cancelled past this point, the client displays the animation even,
-		 * if we cancel it from nodamage_id, so it has to be here for it to not display the animation.
-		 */
-		if( skill_id == AL_PNEUMA && map_getcell(src->m, skill_x, skill_y, CELL_CHKLANDPROTECTOR) ) {
-			clif_skill_fail(sd,skill_id,USESKILL_FAIL_LEVEL,0);
-			return 0;
-		}
 	}
 
 	if( (skill_id >= SC_MANHOLE && skill_id <= SC_FEINTBOMB) && map_getcell(src->m, skill_x, skill_y, CELL_CHKMAELSTROM) ) {
@@ -2547,7 +2551,7 @@ static int unit_attack_timer_sub(struct block_list* src, int tid, unsigned int t
 
 	if( DIFF_TICK(ud->attackabletime,tick) <= 0 ) {
 		if (battle_config.attack_direction_change && (src->type&battle_config.attack_direction_change))
-			ud->dir = map_calc_dir(src, target->x,target->y );
+			ud->dir = map_calc_dir(src, target->x, target->y);
 
 		if(ud->walktimer != INVALID_TIMER)
 			unit_stop_walking(src,1);
