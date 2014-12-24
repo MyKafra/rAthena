@@ -20,34 +20,18 @@
 #include "channel.h"
 #include "chat.h"
 #include "chrif.h"
-#include "clif.h"
 #include "date.h" // is_day_of_*()
 #include "duel.h"
 #include "intif.h"
-#include "itemdb.h"
-#include "log.h"
-#include "mail.h"
-#include "path.h"
 #include "homunculus.h"
 #include "instance.h"
 #include "mercenary.h"
 #include "elemental.h"
-#include "npc.h" // fake_nd
 #include "pet.h" // pet_unlocktarget()
 #include "party.h" // party_search()
-#include "guild.h" // guild_search(), guild_request_info()
-#include "script.h" // script_config
-#include "skill.h"
-#include "status.h" // struct status_data
 #include "storage.h"
-#include "pc.h"
-#include "pc_groups.h"
-#include "quest.h"
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
 #include <math.h>
 
 int pc_split_atoui(char* str, unsigned int* val, char sep, int max);
@@ -406,7 +390,7 @@ void pc_addfame(struct map_session_data *sd,int count)
  * @param job Job use enum e_mapid
  * @return Rank
  */
-unsigned char pc_famerank(int char_id, int job)
+unsigned char pc_famerank(uint32 char_id, int job)
 {
 	uint8 i;
 
@@ -670,7 +654,7 @@ void pc_makesavestatus(struct map_session_data *sd)
 /*==========================================
  * Off init ? Connection?
  *------------------------------------------*/
-void pc_setnewpc(struct map_session_data *sd, int account_id, int char_id, int login_id1, unsigned int client_tick, int sex, int fd)
+void pc_setnewpc(struct map_session_data *sd, uint32 account_id, uint32 char_id, int login_id1, unsigned int client_tick, int sex, int fd)
 {
 	nullpo_retv(sd);
 
@@ -733,7 +717,7 @@ void pc_setinventorydata(struct map_session_data *sd)
 
 /**
 * 'Calculates' weapon type
-* @param sd
+* @param sd : player
 */
 void pc_calcweapontype(struct map_session_data *sd)
 {
@@ -779,7 +763,7 @@ void pc_calcweapontype(struct map_session_data *sd)
 
 /**
 * Set equip index
-* @param sd
+* @param sd : Player
 */
 void pc_setequipindex(struct map_session_data *sd)
 {
@@ -1089,7 +1073,7 @@ bool pc_isequip(struct map_session_data *sd,int n)
  * No problem with the session id
  * set the status that has been sent from char server
  *------------------------------------------*/
-bool pc_authok(struct map_session_data *sd, int login_id2, time_t expiration_time, int group_id, struct mmo_charstatus *st, bool changing_mapservers)
+bool pc_authok(struct map_session_data *sd, uint32 login_id2, time_t expiration_time, int group_id, struct mmo_charstatus *st, bool changing_mapservers)
 {
 	int i;
 #ifdef BOUND_ITEMS
@@ -2164,13 +2148,13 @@ void pc_delautobonus(struct map_session_data* sd, struct s_autobonus *autobonus,
 				if( autobonus[i].bonus_script )
 				{
 					int j;
-					unsigned int equip_pos = 0;
+					unsigned int equip_pos_idx = 0;
 					//Create a list of all equipped positions to see if all items needed for the autobonus are still present [Playtester]
 					for(j = 0; j < EQI_MAX; j++) {
 						if(sd->equip_index[j] >= 0)
-							equip_pos |= sd->status.inventory[sd->equip_index[j]].equip;
+							equip_pos_idx |= sd->status.inventory[sd->equip_index[j]].equip;
 					}
-					if((equip_pos&autobonus[i].pos) == autobonus[i].pos)
+					if((equip_pos_idx&autobonus[i].pos) == autobonus[i].pos)
 						script_run_autobonus(autobonus[i].bonus_script,sd,autobonus[i].pos);
 				}
 				continue;
@@ -2198,13 +2182,13 @@ void pc_exeautobonus(struct map_session_data *sd,struct s_autobonus *autobonus)
 	if( autobonus->other_script )
 	{
 		int j;
-		unsigned int equip_pos = 0;
+		unsigned int equip_pos_idx = 0;
 		//Create a list of all equipped positions to see if all items needed for the autobonus are still present [Playtester]
 		for(j = 0; j < EQI_MAX; j++) {
 			if(sd->equip_index[j] >= 0)
-				equip_pos |= sd->status.inventory[sd->equip_index[j]].equip;
+				equip_pos_idx |= sd->status.inventory[sd->equip_index[j]].equip;
 		}
-		if((equip_pos&autobonus->pos) == autobonus->pos)
+		if((equip_pos_idx&autobonus->pos) == autobonus->pos)
 			script_run_autobonus(autobonus->other_script,sd,autobonus->pos);
 	}
 
@@ -4289,13 +4273,23 @@ char pc_additem(struct map_session_data *sd,struct item *item,int amount,e_log_p
 
 	i = MAX_INVENTORY;
 
+#ifdef ENABLE_ITEM_GUID
+	if (id->flag.guid && !item->unique_id)
+		item->unique_id = pc_generate_unique_id(sd);
+#endif
+
 	// Stackable | Non Rental
 	if( itemdb_isstackable2(id) && item->expire_time == 0 ) {
 		for( i = 0; i < MAX_INVENTORY; i++ ) {
 			if( sd->status.inventory[i].nameid == item->nameid &&
-			    sd->status.inventory[i].bound == item->bound &&
-			    sd->status.inventory[i].expire_time == 0 &&
-			    memcmp(&sd->status.inventory[i].card, &item->card, sizeof(item->card)) == 0 ) {
+				sd->status.inventory[i].bound == item->bound &&
+				sd->status.inventory[i].expire_time == 0 &&
+#ifdef ENABLE_ITEM_GUID
+				sd->status.inventory[i].unique_id == item->unique_id &&
+#endif
+				memcmp(&sd->status.inventory[i].card, &item->card, sizeof(item->card)) == 0
+				)
+			{
 				if( amount > MAX_AMOUNT - sd->status.inventory[i].amount || ( id->stack.inventory && amount > id->stack.amount - sd->status.inventory[i].amount ) )
 					return ADDITEM_OVERAMOUNT;
 				sd->status.inventory[i].amount += amount;
@@ -4324,7 +4318,7 @@ char pc_additem(struct map_session_data *sd,struct item *item,int amount,e_log_p
 		clif_additem(sd,i,amount,0);
 	}
 	if( !itemdb_isstackable2(id) && !item->unique_id )
-		sd->status.inventory[i].unique_id = pc_generate_unique_id(sd);
+		item->unique_id = pc_generate_unique_id(sd);
 	log_pick_pc(sd, log_type, amount, &sd->status.inventory[i]);
 
 	sd->weight += w;
@@ -4858,11 +4852,17 @@ unsigned char pc_cart_additem(struct map_session_data *sd,struct item *item,int 
 	i = MAX_CART;
 	if( itemdb_isstackable2(data) && !item->expire_time )
 	{
-		ARR_FIND( 0, MAX_CART, i,
-			sd->status.cart[i].nameid == item->nameid && sd->status.cart[i].bound == item->bound &&
-			sd->status.cart[i].card[0] == item->card[0] && sd->status.cart[i].card[1] == item->card[1] &&
-			sd->status.cart[i].card[2] == item->card[2] && sd->status.cart[i].card[3] == item->card[3] );
-	};
+		for (i = 0; i < MAX_CART; i++) {
+			if (sd->status.cart[i].nameid == item->nameid
+				&& sd->status.cart[i].bound == item->bound
+#ifdef ENABLE_ITEM_GUID
+				&& sd->status.cart[i].unique_id == item->unique_id
+#endif
+				&& memcmp(sd->status.cart[i].card, item->card, sizeof(item->card)) == 0
+				)
+				break;
+		}
+	}
 
 	if( i < MAX_CART )
 	{// item already in cart, stack it
@@ -9060,7 +9060,7 @@ static int pc_removecombo(struct map_session_data *sd, struct item_data *data ) 
 		int x = 0, cursor = 0, j;
 		ARR_FIND( 0, sd->combos.count, x, sd->combos.id[x] == data->combos[i]->id );
 		/* no match, skip this combo */
-		if( !(x < sd->combos.count) )
+		if(x >= sd->combos.count)
 			continue;
 
 		sd->combos.bonus[x] = NULL;
@@ -10788,7 +10788,7 @@ void pc_itemcd_do(struct map_session_data *sd, bool load) {
 * @param sd
 * @param md
 **/
-static void pc_clear_log_damage_sub(int char_id, struct mob_data *md)
+static void pc_clear_log_damage_sub(uint32 char_id, struct mob_data *md)
 {
 	uint8 i;
 	ARR_FIND(0,DAMAGELOG_SIZE,i,md->dmglog[i].id == char_id);
@@ -10963,7 +10963,7 @@ enum e_BANKING_DEPOSIT_ACK pc_bank_deposit(struct map_session_data *sd, int mone
 		return BDA_NO_MONEY;
 
 	sd->status.bank_vault += money;
-	if( save_settings&256 )
+	if( save_settings&CHARSAVE_BANK )
 		chrif_save(sd,0);
 	return BDA_SUCCESS;
 }
@@ -10990,7 +10990,7 @@ enum e_BANKING_WITHDRAW_ACK pc_bank_withdraw(struct map_session_data *sd, int mo
 		return BWA_NO_MONEY;
 	
 	sd->status.bank_vault -= money;
-	if( save_settings&256 )
+	if( save_settings&CHARSAVE_BANK )
 		chrif_save(sd,0);
 	return BWA_SUCCESS;
 }
@@ -11274,6 +11274,7 @@ bool pc_is_same_equip_index(enum equip_index eqi, short *equip_index, short inde
  * @return A generated Unique item ID
  */
 uint64 pc_generate_unique_id(struct map_session_data *sd) {
+	nullpo_ret(sd);
 	return ((uint64)sd->status.char_id << 32) | sd->status.uniqueitem_counter++;
 }
 
