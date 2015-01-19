@@ -2024,7 +2024,7 @@ struct Damage battle_calc_misc_attack(struct block_list *src,struct block_list *
  *	Refined and optimized by helvetica
   *	flag - see e_battle_flag
  */
-static bool is_infinite_defense(struct block_list *target, int flag)
+bool is_infinite_defense(struct block_list *target, int flag)
 {
 	struct status_data *tstatus = status_get_status_data(target);
 
@@ -6156,7 +6156,7 @@ struct Damage battle_calc_misc_attack(struct block_list *src,struct block_list *
 			md.damage = 7 * ((atk.damage/skill_lv + matk.damage/skill_lv) * tstatus->vit / 100 );
 
 			// AD benefits from endow/element but damage is forced back to neutral
-			battle_attr_fix(src, target, md.damage, ELE_NEUTRAL, tstatus->def_ele, tstatus->ele_lv);
+			md.damage = battle_attr_fix(src, target, md.damage, ELE_NEUTRAL, tstatus->def_ele, tstatus->ele_lv);
 		}
 #else
 		if(tstatus->vit+sstatus->int_) //crash fix
@@ -7946,6 +7946,8 @@ static const struct _battle_data {
 	{ "snap_dodge",                         &battle_config.snap_dodge,                      0,      0,      1,              },
 	{ "stormgust_knockback",                &battle_config.stormgust_knockback,             1,      0,      1,              },
 	{ "default_fixed_castrate",             &battle_config.default_fixed_castrate,          20,     0,      100,            },
+	{ "default_bind_on_equip",              &battle_config.default_bind_on_equip,           BOUND_CHAR, BOUND_NONE, BOUND_MAX-1, },
+	{ "pet_ignore_infinite_def",            &battle_config.pet_ignore_infinite_def,         0,      0,      1,              },
 };
 
 #ifndef STATS_OPT_OUT
