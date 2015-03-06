@@ -8531,5 +8531,13 @@ The command returns 1 upon success, and these values upon failure:
 
 ---------------------------------------
 
+*import("<filename>");
+
+คำสั่งโหลดไฟล์สคริป
+
+---------------------------------------
+
 Whew.
 That's about all of them.
+
+

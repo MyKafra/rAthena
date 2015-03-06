@@ -17,3 +17,14 @@
 //	script_pushint(st,1);
 //	return 0;
 //}
+
+BUILDIN_FUNC(import)
+{
+	const char *file = script_getstr(st, 2);
+
+	npc_addsrcfile(file);
+	npc_parsesrcfile(file, true);
+	npc_read_event_script();
+	
+	return 0;
+}
