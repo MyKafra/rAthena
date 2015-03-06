@@ -9,3 +9,6 @@
  **/
 
 //ACMD_DEF(newcommand),
+
+/* It's Me */
+ACMD_DEF(recallmap),
