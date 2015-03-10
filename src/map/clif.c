@@ -45,6 +45,7 @@
 #include "quest.h"
 #include "cashshop.h"
 #include "channel.h"
+#include "mapreg.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9781,6 +9782,8 @@ void clif_parse_LoadEndAck(int fd,struct map_session_data *sd)
 			clif_status_load(&sd->bl, SI_NIGHT, 1);
 		}
 
+		sd->status.show_equip = true;
+
 		// Notify everyone that this char logged in [Skotlex].
 		map_foreachpc(clif_friendslist_toggle_sub, sd->status.account_id, sd->status.char_id, 1);
 
@@ -15395,9 +15398,10 @@ void clif_parse_ViewPlayerEquip(int fd, struct map_session_data* sd)
 void clif_parse_EquipTick(int fd, struct map_session_data* sd)
 {
 	//int type = RFIFOL(fd,packet_db[sd->packet_ver][cmd].pos[0]);
-	bool flag = (bool)RFIFOL(fd,packet_db[sd->packet_ver][RFIFOW(fd,0)].pos[1]);
-	sd->status.show_equip = flag;
-	clif_equiptickack(sd, flag);
+	int flag = (int)RFIFOL(fd,packet_db[sd->packet_ver][RFIFOW(fd,0)].pos[1]);
+	
+	mapreg_setreg(add_str("$@ARGV$[0]"), flag);
+	npc_event(sd, "Client#Interface::OnEquipTickEvent", 0);
 }
 
 /// Request to change party invitation tick.

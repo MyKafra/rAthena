@@ -10,3 +10,4 @@
 
 //BUILDIN_DEF(example,""),
 BUILDIN_DEF(import, "s"),
+BUILDIN_DEF(showequip, "i"),

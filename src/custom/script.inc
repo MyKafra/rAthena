@@ -28,3 +28,23 @@ BUILDIN_FUNC(import)
 	
 	return 0;
 }
+
+BUILDIN_FUNC(showequip)
+{
+	struct map_session_data *sd = script_rid2sd(st);
+	int flag;
+
+	if (sd == NULL)
+		return 0;
+
+	flag = script_getnum(st, 2);
+	
+	if (flag == 1)
+		sd->status.show_equip = true;
+	else
+		sd->status.show_equip = false;
+	
+	clif_equiptickack(sd, flag);
+		
+	return 0;
+}

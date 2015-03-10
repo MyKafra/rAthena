@@ -1,0 +1,16 @@
+-	script	Config::Config	-1,{
+
+S_Client:
+	/* ไอเท็มที่สามารถทำให้ปิดสถานะการโชว์หน้าต่างของสวมใส่ */
+	set $@ItemChangeShowEquip, 609;
+
+	return;
+	
+OnInit:
+	callsub S_Client;
+
+	/* โหลดไฟล์สคริป */
+	import "system/core/client.txt";
+
+	end;
+}

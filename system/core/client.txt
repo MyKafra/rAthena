@@ -1,0 +1,47 @@
+-	script	Client#Interface	-1,{
+
+OnPCLoginEvent:
+	/* ไอดีที่ไม่ได้ใช้ไอเท็มปิดบังสถานะ จะเปิดเผยอัติโนมัตื */
+	if (##SHOW_EQUIP_WINDOW == 1)
+	{
+		callsub S_ShowEquipItem, 0;
+	}
+	else
+	{
+		callsub S_ShowEquipItem, 1;
+	}
+	
+	end;
+
+OnEquipTickEvent:
+	set .@flag, atoi($@ARGV$[0]);
+	debugmes ""+atoi($@ARGV$[0])+"";
+	callsub S_ShowEquipItem, .@flag;
+	
+	end;
+	
+S_ShowEquipItem:
+	set .@flag, getarg(0);	// 0 =ปิดบังถานะ, 1 = เปิดสถานะ
+	
+	debugmes ""+.@flag+"";
+
+	/* ต้องใช้ไอเท็มที่กำหนดถึงจะสามารถปิดสถานะได้ */
+	if (.@flag == 0 && $@ItemChangeShowEquip)
+	{
+		if (countitem($@ItemChangeShowEquip) < 1)
+		{
+			dispbottom "จำเป็นต้องใช้ ["+getitemname($@ItemChangeShowEquip)+"] ในการปิดบังสถานะ";
+			showequip 1;
+			return;
+		}
+		else
+		{
+			delitem $@ItemChangeShowEquip, 1;
+		}
+	}
+	
+	showequip .@flag;
+	set ##SHOW_EQUIP_WINDOW, .@flag + 1;
+	
+	return;
+}
