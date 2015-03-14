@@ -1227,12 +1227,6 @@ int64 battle_calc_damage(struct block_list *src,struct block_list *bl,struct Dam
 			return 0;
 		}
 
-		//Probably not the most correct place, but it'll do here
-		//(since battle_drain is strictly for players currently)
-		if ((sce=sc->data[SC_BLOODLUST]) && flag&BF_WEAPON && damage > 0 &&
-			rnd()%100 < sce->val3)
-			status_heal(src, (int64)damage*sce->val4/100, 0, 3);
-
 		if( sd && (sce = sc->data[SC_FORCEOFVANGUARD]) && flag&BF_WEAPON && rnd()%100 < sce->val2 )
 			pc_addspiritball(sd,skill_get_time(LG_FORCEOFVANGUARD,sce->val1),sce->val3);
 
@@ -1263,6 +1257,10 @@ int64 battle_calc_damage(struct block_list *src,struct block_list *bl,struct Dam
 	if (sc && sc->count) {
 		if( sc->data[SC_INVINCIBLE] && !sc->data[SC_INVINCIBLEOFF] )
 			DAMAGE_ADDRATE(75)
+
+		if ((sce = sc->data[SC_BLOODLUST]) && flag&BF_WEAPON && damage > 0 && rnd()%100 < sce->val3)
+			status_heal(src, damage * sce->val4 / 100, 0, 3);
+
 		// [Epoque]
 		if (bl->type == BL_MOB) {
 			uint8 i;
@@ -1368,7 +1366,7 @@ int64 battle_calc_damage(struct block_list *src,struct block_list *bl,struct Dam
  * @param flag
  * @return damage
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -1691,7 +1689,7 @@ static int battle_calc_base_weapon_attack(struct block_list *src, struct status_
  * &16: Arrow attack but BOW, REVOLVER, RIFLE, SHOTGUN, GATLING or GRENADE type weapon not equipped (i.e. shuriken, kunai and venom knives not affected by DEX)
  *
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -1787,7 +1785,7 @@ static int64 battle_calc_base_damage(struct status_data *status, struct weapon_a
  * Consumes ammo for the given skill.
  *------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2019,7 +2017,7 @@ struct Damage battle_calc_misc_attack(struct block_list *src,struct block_list *
  * Should infinite defense be applied on target? (plant)
  *-------------------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
   *	flag - see e_battle_flag
@@ -2051,7 +2049,7 @@ bool is_infinite_defense(struct block_list *target, int flag)
  * Is attack arrow based?
  *------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2070,7 +2068,7 @@ static bool is_skill_using_arrow(struct block_list *src, int skill_id)
  * Is attack right handed? By default yes.
  *-----------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2090,7 +2088,7 @@ static bool is_attack_right_handed(struct block_list *src, int skill_id)
  * Is attack left handed? By default no.
  *---------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2119,7 +2117,7 @@ static bool is_attack_left_handed(struct block_list *src, int skill_id)
  * Do we score a critical hit?
  *-----------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2192,7 +2190,7 @@ static bool is_attack_critical(struct Damage wd, struct block_list *src, struct 
  * Is the attack piercing? (Investigate/Ice Pick in pre-re)
  *----------------------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2248,7 +2246,7 @@ static bool battle_skill_get_damage_properties(uint16 skill_id, int is_splash)
  * Checks if attack is hitting
  *-----------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2404,7 +2402,7 @@ static bool is_attack_hitting(struct Damage wd, struct block_list *src, struct b
  * If attack ignores def.
  *------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2453,7 +2451,7 @@ static bool attack_ignores_def(struct Damage wd, struct block_list *src, struct 
  * Should skill attack consider VVS and masteries?
  *------------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2475,7 +2473,7 @@ static bool battle_skill_stacks_masteries_vvs(uint16 skill_id)
  * Calculate equipment ATK for renewal ATK
  *----------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2499,7 +2497,7 @@ static int battle_calc_equip_attack(struct block_list *src, int skill_id)
  * Returns the element type of attack
  *----------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2571,7 +2569,7 @@ static int battle_get_weapon_element(struct Damage wd, struct block_list *src, s
  * Do element damage modifier calculation
  *----------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2658,7 +2656,7 @@ static struct Damage battle_calc_element_damage(struct Damage wd, struct block_l
  * Calculate weapon mastery damages
  *----------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2751,7 +2749,7 @@ static struct Damage battle_calc_attack_masteries(struct Damage wd, struct block
  * Calculate the various Renewal ATK parts
  *-----------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2802,7 +2800,7 @@ struct Damage battle_calc_damage_parts(struct Damage wd, struct block_list *src,
  * Calculate basic ATK that goes into the skill ATK formula
  *----------------------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -2906,10 +2904,6 @@ struct Damage battle_calc_skill_base_damage(struct Damage wd, struct block_list 
 			{
 				int damagevalue = 0;
 
-				wd.damage = wd.damage2 = 0;
-#ifdef RENEWAL
-				wd.weaponAtk = wd.weaponAtk2 = 0;
-#endif
 				damagevalue = ((sstatus->hp / 50) + (status_get_max_sp(src) / 4)) * skill_lv;
 				if(status_get_lv(src) > 100)
 					damagevalue = damagevalue * status_get_lv(src) / 150;
@@ -2925,10 +2919,6 @@ struct Damage battle_calc_skill_base_damage(struct Damage wd, struct block_list 
 		case NC_SELFDESTRUCTION: {
 				int damagevalue = 0;
 
-				wd.damage = wd.damage2 = 0;
-#ifdef RENEWAL
-				wd.weaponAtk = wd.weaponAtk2 = 0;
-#endif
 				damagevalue = (skill_lv + 1) * ((sd ? pc_checkskill(sd,NC_MAINFRAME) : 0) + 8) * (status_get_sp(src) + sstatus->vit);
 				if(status_get_lv(src) > 100)
 					damagevalue = damagevalue * status_get_lv(src) / 100;
@@ -2942,10 +2932,6 @@ struct Damage battle_calc_skill_base_damage(struct Damage wd, struct block_list 
 		case KO_HAPPOKUNAI: {
 				int damagevalue = 0;
 
-				wd.damage = wd.damage2 = 0;
-#ifdef RENEWAL
-				wd.weaponAtk = wd.weaponAtk2 = 0;
-#endif
 				if(sd) {
 					short index = sd->equip_index[EQI_AMMO];
 
@@ -3071,7 +3057,7 @@ static struct Damage battle_apply_div_fix(struct Damage d)
  * Check for and calculate multi attacks
  *---------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -3137,7 +3123,7 @@ static struct Damage battle_calc_multi_attack(struct Damage wd, struct block_lis
  * Calculate skill level ratios for weapon-based skills
  *------------------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -3460,7 +3446,12 @@ static int battle_calc_attack_skill_ratio(struct Damage wd, struct block_list *s
 			skillratio += 100 *(skill_lv+1);
 			break;
 		case GS_PIERCINGSHOT:
-			skillratio += 20*skill_lv;
+#ifdef RENEWAL
+			if (sd && sd->weapontype1 == W_RIFLE)
+				skillratio += 50 + 30 * skill_lv;
+			else
+#endif
+				skillratio += 20*skill_lv;
 			break;
 		case GS_RAPIDSHOWER:
 			skillratio += 400+50*skill_lv;
@@ -4060,7 +4051,7 @@ static int battle_calc_attack_skill_ratio(struct Damage wd, struct block_list *s
  * Constant skill damage additions are added before SC modifiers and after skill base ATK calculation
  *--------------------------------------------------------------------------------------------------*
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -4140,7 +4131,7 @@ static int battle_calc_skill_constant_addition(struct Damage wd, struct block_li
  * Stackable SC bonuses added on top of calculated skill damage
  *--------------------------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -4297,7 +4288,7 @@ struct Damage battle_attack_sc_bonus(struct Damage wd, struct block_list *src, s
  * Calc defense damage reduction
  *------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -4468,7 +4459,7 @@ struct Damage battle_calc_defense_reduction(struct Damage wd, struct block_list 
  * Modifiers ignoring DEF
  *------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -4528,7 +4519,7 @@ struct Damage battle_calc_attack_post_defense(struct Damage wd, struct block_lis
  * "Plant"-type (mobs that only take 1 damage from all sources) damage calculation
  *---------------------------------------------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -4583,7 +4574,7 @@ struct Damage battle_calc_attack_plant(struct Damage wd, struct block_list *src,
  * Perform left/right hand weapon damage calculation based on previously calculated damage
  *----------------------------------------------------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -4641,7 +4632,7 @@ struct Damage battle_calc_attack_left_right_hands(struct Damage wd, struct block
  * BG/GvG attack modifiers
  *------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -4681,7 +4672,7 @@ struct Damage battle_calc_attack_gvg_bg(struct Damage wd, struct block_list *src
  * final ATK modifiers - after BG/GvG calc
  *------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -4780,7 +4771,7 @@ struct Damage battle_calc_weapon_final_atk_modifiers(struct Damage wd, struct bl
  * Basic wd init - not influenced by HIT/MISS/DEF/etc.
  *----------------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -4949,7 +4940,7 @@ void battle_do_reflect(int attack_type, struct Damage *wd, struct block_list* sr
  * Calculate "weapon"-type attacks and skills
  *--------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
@@ -5149,9 +5140,21 @@ static struct Damage battle_calc_weapon_attack(struct block_list *src, struct bl
 		}
 #ifndef RENEWAL
 		//Card Fix for attacker (sd), 2 is added to the "left" flag meaning "attacker cards only"
-		wd.damage += battle_calc_cardfix(BF_WEAPON, src, target, battle_skill_get_damage_properties(skill_id, wd.miscflag), right_element, left_element, wd.damage, 2, wd.flag);
-		if( is_attack_left_handed(src, skill_id ))
-			wd.damage2 += battle_calc_cardfix(BF_WEAPON, src, target, battle_skill_get_damage_properties(skill_id, wd.miscflag), right_element, left_element, wd.damage2, 3, wd.flag);
+		switch(skill_id) {
+			case RK_DRAGONBREATH:
+			case RK_DRAGONBREATH_WATER:
+				if(wd.flag&BF_LONG) { //Add check here, because we want to apply the same behavior in pre-renewal [exneval]
+					wd.damage = wd.damage * (100 + sd->bonus.long_attack_atk_rate) / 100;
+					if(is_attack_left_handed(src, skill_id))
+						wd.damage2 = wd.damage2 * (100 + sd->bonus.long_attack_atk_rate) / 100;
+				}
+				break;
+			default:
+				wd.damage += battle_calc_cardfix(BF_WEAPON, src, target, battle_skill_get_damage_properties(skill_id, wd.miscflag), right_element, left_element, wd.damage, 2, wd.flag);
+				if( is_attack_left_handed(src, skill_id ))
+					wd.damage2 += battle_calc_cardfix(BF_WEAPON, src, target, battle_skill_get_damage_properties(skill_id, wd.miscflag), right_element, left_element, wd.damage2, 3, wd.flag);
+				break;
+		}
 #endif
 	}
 
@@ -6019,7 +6022,7 @@ struct Damage battle_calc_magic_attack(struct block_list *src,struct block_list 
  * Calculate "misc"-type attacks and skills
  *------------------------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *	Refined and optimized by helvetica
  */
 struct Damage battle_calc_misc_attack(struct block_list *src,struct block_list *target,uint16 skill_id,uint16 skill_lv,int mflag)
@@ -6251,13 +6254,6 @@ struct Damage battle_calc_misc_attack(struct block_list *src,struct block_list *
 		break;
 	case NPC_EVILLAND:
 		md.damage = skill_calc_heal(src,target,skill_id,skill_lv,false);
-		break;
-	case RK_DRAGONBREATH_WATER:
-	case RK_DRAGONBREATH:
-		md.damage = ((status_get_hp(src) / 50) + (status_get_max_sp(src) / 4)) * skill_lv;
-		RE_LVL_MDMOD(150);
-		if (sd) md.damage = (int64)md.damage * (95 + 5 * pc_checkskill(sd,RK_DRAGONTRAINING)) / 100;
-		md.flag |= BF_LONG|BF_WEAPON;
 		break;
 	case RA_CLUSTERBOMB:
 	case RA_FIRINGTRAP:
@@ -6824,8 +6820,13 @@ enum damage_lv battle_weapon_attack(struct block_list* src, struct block_list* t
 	if (tsc && tsc->data[SC_MTF_MLEATKED] && rnd()%100 < 20)
 		clif_skill_nodamage(target, target, SM_ENDURE, 5, sc_start(src, target, SC_ENDURE, 100, 5, skill_get_time(SM_ENDURE, 5)));
 
-	if(tsc && tsc->data[SC_KAAHI] && tsc->data[SC_KAAHI]->val4 == INVALID_TIMER && tstatus->hp < tstatus->max_hp)
-		tsc->data[SC_KAAHI]->val4 = add_timer(tick + skill_get_time2(SL_KAAHI,tsc->data[SC_KAAHI]->val1), kaahi_heal_timer, target->id, SC_KAAHI); //Activate heal.
+	if(tsc && tsc->data[SC_KAAHI] && tstatus->hp < tstatus->max_hp && status_charge(target, 0, tsc->data[SC_KAAHI]->val3)) {
+		int hp_heal = tstatus->max_hp - tstatus->hp;
+		if (hp_heal > tsc->data[SC_KAAHI]->val2)
+			hp_heal = tsc->data[SC_KAAHI]->val2;
+		if (hp_heal)
+			status_heal(target, hp_heal, 0, 2);
+	}
 
 	wd = battle_calc_attack(BF_WEAPON, src, target, 0, 0, flag);
 
@@ -7053,7 +7054,7 @@ enum damage_lv battle_weapon_attack(struct block_list* src, struct block_list* t
  * Check for undead status
  *-------------------------
  * Credits:
- *	Original coder Skoltex
+ *	Original coder Skotlex
  *  Refactored by Baalberith
  */
 int battle_check_undead(int race,int element)
