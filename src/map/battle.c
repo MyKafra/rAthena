@@ -892,7 +892,7 @@ int64 battle_calc_damage(struct block_list *src,struct block_list *bl,struct Dam
 			status_change_end(bl, SC_SAFETYWALL, INVALID_TIMER);
 		}
 
-		if (sc->data[SC__MANHOLE]) {
+		if (sc->data[SC__MANHOLE] || (src->type == BL_PC && sc->data[SC_KINGS_GRACE])) {
 			d->dmg_lv = ATK_BLOCK;
 			return 0;
 		}
@@ -2391,8 +2391,12 @@ static bool is_attack_hitting(struct Damage wd, struct block_list *src, struct b
 			hitrate += 3 * skill;
 	}
 
-	if(sc && sc->data[SC_MTF_ASPD])
-		hitrate += 5;
+	if (sc) {
+		if (sc->data[SC_MTF_ASPD])
+			hitrate += 5;
+		if (sc->data[SC_MTF_ASPD2])
+			hitrate += 10;
+	}
 
 	hitrate = cap_value(hitrate, battle_config.min_hitrate, battle_config.max_hitrate);
 	return (rnd()%100 < hitrate);
@@ -4135,7 +4139,7 @@ static int battle_calc_skill_constant_addition(struct Damage wd, struct block_li
  *	Initial refactoring by Baalberith
  *	Refined and optimized by helvetica
  */
-struct Damage battle_attack_sc_bonus(struct Damage wd, struct block_list *src, struct block_list *target, uint16 skill_id)
+struct Damage battle_attack_sc_bonus(struct Damage wd, struct block_list *src, struct block_list *target, uint16 skill_id, uint16 skill_lv)
 {
 	struct map_session_data *sd = BL_CAST(BL_PC, src);
 	struct status_change *sc = status_get_sc(src);
@@ -4269,15 +4273,19 @@ struct Damage battle_attack_sc_bonus(struct Damage wd, struct block_list *src, s
 					break;
 			}
 		}
-		if(sc->data[SC_FLASHCOMBO]) {
-			ATK_ADD(wd.damage, wd.damage2, sc->data[SC_FLASHCOMBO]->val2);
-#ifdef RENEWAL
-			ATK_ADD(wd.equipAtk, wd.equipAtk2, sc->data[SC_FLASHCOMBO]->val2);
-#endif
-		}
-		if(sc->data[SC_MTF_RANGEATK] && (wd.flag&(BF_LONG|BF_MAGIC)) == BF_LONG) { // Monster Transformation bonus
-			ATK_ADDRATE(wd.damage, wd.damage2, 25);
-			RE_ALLATK_ADDRATE(wd, 25);
+		if((wd.flag&(BF_LONG|BF_MAGIC)) == BF_LONG) { // Monster Transformation bonus
+			if (sc->data[SC_MTF_RANGEATK]) {
+				ATK_ADDRATE(wd.damage, wd.damage2, 25);
+				RE_ALLATK_ADDRATE(wd, 25);
+			}
+			if (sc->data[SC_MTF_RANGEATK2]) {
+				ATK_ADDRATE(wd.damage, wd.damage2, 30);
+				RE_ALLATK_ADDRATE(wd, 30);
+			}
+			if (sc->data[SC_MTF_CRIDAMAGE] && is_attack_critical(wd, src, target, skill_id, skill_lv, false)) {
+				ATK_ADDRATE(wd.damage, wd.damage2, 25);
+				RE_ALLATK_ADDRATE(wd, 25); //Temporary it should be 'bonus.crit_atk_rate'
+			}
 		}
 	}
 
@@ -5033,7 +5041,7 @@ static struct Damage battle_calc_weapon_attack(struct block_list *src, struct bl
 		}
 
 		// final attack bonuses that aren't affected by cards
-		wd = battle_attack_sc_bonus(wd, src, target, skill_id);
+		wd = battle_attack_sc_bonus(wd, src, target, skill_id, skill_lv);
 
 		if (sd) { //monsters, homuns and pets have their damage computed directly
 			wd.damage = wd.statusAtk + wd.weaponAtk + wd.equipAtk + wd.masteryAtk;
@@ -5045,7 +5053,7 @@ static struct Damage battle_calc_weapon_attack(struct block_list *src, struct bl
 		}
 #else
 		// final attack bonuses that aren't affected by cards
-		wd = battle_attack_sc_bonus(wd, src, target, skill_id);
+		wd = battle_attack_sc_bonus(wd, src, target, skill_id, skill_lv);
 #endif
 
 		if (wd.damage + wd.damage2) { //Check if attack ignores DEF
@@ -6216,7 +6224,7 @@ struct Damage battle_calc_misc_attack(struct block_list *src,struct block_list *
 		break;
 	case HVAN_EXPLOSION:	//[orn]
 		md.damage = (int64)sstatus->max_hp * (50 + 50 * skill_lv) / 100;
-		break ;
+		break;
 	case ASC_BREAKER:
 #ifdef RENEWAL
 		// Official Renewal formula [helvetica]
@@ -6997,21 +7005,21 @@ enum damage_lv battle_weapon_attack(struct block_list* src, struct block_list* t
 					}
 				}
 
-                if (sd->state.autocast == 0) {
-                    sd->state.autocast = 1;
-                    skill_consume_requirement(sd, r_skill, r_lv, 3);
-                    switch (type) {
-                        case CAST_GROUND:
-                            skill_castend_pos2(src, target->x, target->y, r_skill, r_lv, tick, flag);
-                            break;
-                        case CAST_NODAMAGE:
-                            skill_castend_nodamage_id(src, target, r_skill, r_lv, tick, flag);
-                            break;
-                        case CAST_DAMAGE:
-                            skill_castend_damage_id(src, target, r_skill, r_lv, tick, flag);
-                            break;
-                    }
-                }
+				if (sd->state.autocast == 0) {
+					sd->state.autocast = 1;
+					skill_consume_requirement(sd, r_skill, r_lv, 3);
+					switch (type) {
+						case CAST_GROUND:
+							skill_castend_pos2(src, target->x, target->y, r_skill, r_lv, tick, flag);
+							break;
+						case CAST_NODAMAGE:
+							skill_castend_nodamage_id(src, target, r_skill, r_lv, tick, flag);
+							break;
+						case CAST_DAMAGE:
+							skill_castend_damage_id(src, target, r_skill, r_lv, tick, flag);
+							break;
+					}
+				}
 				sd->state.autocast = 0;
 
 				sd->ud.canact_tick = tick + skill_delayfix(src, r_skill, r_lv);
@@ -7134,10 +7142,12 @@ int battle_check_target( struct block_list *src, struct block_list *target,int f
 	int state = 0; //Initial state none
 	int strip_enemy = 1; //Flag which marks whether to remove the BCT_ENEMY status if it's also friend/ally.
 	struct block_list *s_bl = src, *t_bl = target;
+	struct unit_data *ud = NULL;
 
 	nullpo_ret(src);
 	nullpo_ret(target);
 
+	ud = unit_bl2ud(target);
 	m = target->m;
 
 	//t_bl/s_bl hold the 'master' of the attack, while src/target are the actual
@@ -7166,6 +7176,7 @@ int battle_check_target( struct block_list *src, struct block_list *target,int f
 	switch( target->type ) { // Checks on actual target
 		case BL_PC: {
 				struct status_change* sc = status_get_sc(src);
+
 				if (((TBL_PC*)target)->invincible_timer != INVALID_TIMER || pc_isinvisible((TBL_PC*)target))
 					return -1; //Cannot be targeted yet.
 				if( sc && sc->count ) {
@@ -7177,6 +7188,9 @@ int battle_check_target( struct block_list *src, struct block_list *target,int f
 		case BL_MOB:
 		{
 			struct mob_data *md = ((TBL_MOB*)target);
+
+			if (ud && ud->immune_attack)
+				return 0;
 			if(((md->special_state.ai == AI_SPHERE || //Marine Spheres
 				(md->special_state.ai == AI_FLORA && battle_config.summon_flora&1)) && s_bl->type == BL_PC && src->type != BL_MOB) || //Floras
 				(md->special_state.ai == AI_ZANZOU && t_bl->id != s_bl->id) || //Zanzoe
@@ -7248,25 +7262,29 @@ int battle_check_target( struct block_list *src, struct block_list *target,int f
 				return 0;
 		}
 			break;
-		//Valid targets with no special checks here.
 		case BL_MER:
 		case BL_HOM:
 		case BL_ELEM:
+			if (ud && ud->immune_attack)
+				return 0;
 			break;
 		//All else not specified is an invalid target.
 		default:
 			return 0;
 	} //end switch actual target
 
-	switch( t_bl->type )
-	{	//Checks on target master
-		case BL_PC:
-		{
+	switch( t_bl->type ) { //Checks on target master
+		case BL_PC: {
 			struct map_session_data *sd;
-			if( t_bl == s_bl ) break;
-			sd = BL_CAST(BL_PC, t_bl);
+			struct status_change *sc = NULL;
 
-			if( sd->state.monster_ignore && flag&BCT_ENEMY )
+			if( t_bl == s_bl )
+				break;
+
+			sd = BL_CAST(BL_PC, t_bl);
+			sc = status_get_sc(t_bl);
+
+			if( (sd->state.monster_ignore || (sc->data[SC_KINGS_GRACE] && s_bl->type != BL_PC)) && flag&BCT_ENEMY )
 				return 0; // Global immunity only to Attacks
 			if( sd->status.karma && s_bl->type == BL_PC && ((TBL_PC*)s_bl)->status.karma )
 				state |= BCT_ENEMY; // Characters with bad karma may fight amongst them

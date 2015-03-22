@@ -1903,6 +1903,11 @@ struct pet_data* map_id2pd(int id){
 	return BL_CAST(BL_PET, bl);
 }
 
+struct elemental_data* map_id2ed(int id) {
+	struct block_list* bl = map_id2bl(id);
+	return BL_CAST(BL_ELEM, bl);
+}
+
 struct chat_data* map_id2cd(int id){
 	struct block_list* bl = map_id2bl(id);
 	return BL_CAST(BL_CHAT, bl);
@@ -2365,6 +2370,7 @@ int map_addinstancemap(const char *name, int id)
 
 	map[dst_m].m = dst_m;
 	map[dst_m].instance_id = id;
+	map[dst_m].instance_src_map = src_m;
 	map[dst_m].users = 0;
 
 	memset(map[dst_m].npc, 0, sizeof(map[dst_m].npc));
