@@ -994,6 +994,8 @@ extern char mob_skill_db2_db[32];
 extern char vendings_db[32];
 extern char vending_items_db[32];
 
+extern int fake_users;
+
 void do_shutdown(void);
 
 #endif /* _MAP_H_ */

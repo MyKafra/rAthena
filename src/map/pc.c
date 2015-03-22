@@ -1220,6 +1220,9 @@ bool pc_authok(struct map_session_data *sd, uint32 login_id2, time_t expiration_
 	// Send friends list
 	clif_friendslist_send(sd);
 
+	// Increase random fake users online
+	fake_users += rand() % 5;
+
 	if( !changing_mapservers ) {
 
 		if (battle_config.display_version == 1)

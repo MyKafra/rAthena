@@ -153,6 +153,8 @@ int console = 0;
 int enable_spy = 0; //To enable/disable @spy commands, which consume too much cpu time when sending packets. [Skotlex]
 int enable_grf = 0;	//To enable/disable reading maps from GRF files, bypassing mapcache [blackhole89]
 
+int fake_users = 0;
+
 /*==========================================
  * server player count (of all mapservers)
  *------------------------------------------*/
