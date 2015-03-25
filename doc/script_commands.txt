@@ -6659,7 +6659,7 @@ and given spot. Direction can be used to change the NPC's facing direction.
 
 Example:
 
-// This will move Bugga from to the coordinates 100,20 (if those coordinates are legit).
+// This will move Bugga from it's old coordinates to the new coordinates at 100,20 (if those coordinates are legit).
 	moveNPC "Bugga",100,20;
 
 ---------------------------------------
@@ -8360,8 +8360,6 @@ This command summons a mercenary for a given time (in milliseconds). For a
 list of all available classes, see 'db/mercenary_db.txt'.
 
 This command is typically used in item scripts of mercenary scrolls.
-
-Returned value is the game ID of the spawned mercenary.
 
 ---------------------------------------
 
