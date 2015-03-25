@@ -2247,7 +2247,7 @@ void pc_exeautobonus(struct map_session_data *sd,struct s_autobonus *autobonus)
 
 	autobonus->active = add_timer(gettick()+autobonus->duration, pc_endautobonus, sd->bl.id, (intptr_t)autobonus);
 	sd->state.autobonus |= autobonus->pos;
-	status_calc_pc(sd,SCO_NONE);
+	status_calc_pc(sd,SCO_FORCE);
 }
 
 int pc_endautobonus(int tid, unsigned int tick, int id, intptr_t data)
@@ -2260,7 +2260,7 @@ int pc_endautobonus(int tid, unsigned int tick, int id, intptr_t data)
 
 	autobonus->active = INVALID_TIMER;
 	sd->state.autobonus &= ~autobonus->pos;
-	status_calc_pc(sd,SCO_NONE);
+	status_calc_pc(sd,SCO_FORCE);
 	return 0;
 }
 
@@ -5521,7 +5521,7 @@ int pc_get_skillcooldown(struct map_session_data *sd, uint16 skill_id, uint16 sk
  *------------------------------------------*/
 uint8 pc_checkskill(struct map_session_data *sd, uint16 skill_id)
 {
-	uint16 i = 0, idx = 0;
+	uint16 idx = 0;
 	if (sd == NULL)
 		return 0;
 	if ((idx = skill_get_index(skill_id)) == 0) {
@@ -7755,7 +7755,7 @@ bool pc_setparam(struct map_session_data *sd,int type,int val)
 		clif_updatestatus(sd, SP_NEXTBASEEXP);
 		clif_updatestatus(sd, SP_STATUSPOINT);
 		clif_updatestatus(sd, SP_BASEEXP);
-		status_calc_pc(sd, SCO_NONE);
+		status_calc_pc(sd, SCO_FORCE);
 		if(sd->status.party_id)
 			party_send_levelup(sd);
 		break;
@@ -7770,7 +7770,7 @@ bool pc_setparam(struct map_session_data *sd,int type,int val)
 		// clif_updatestatus(sd, SP_JOBLEVEL);  // Gets updated at the bottom
 		clif_updatestatus(sd, SP_NEXTJOBEXP);
 		clif_updatestatus(sd, SP_JOBEXP);
-		status_calc_pc(sd, 0);
+		status_calc_pc(sd, SCO_FORCE);
 		break;
 	case SP_SKILLPOINT:
 		sd->status.skill_point = val;
@@ -7943,6 +7943,9 @@ int pc_itemheal(struct map_session_data *sd,int itemid, int hp,int sp)
 		// Recovery Potion
 		if( sd->sc.data[SC_INCHEALRATE] )
 			hp += (int)(hp * sd->sc.data[SC_INCHEALRATE]->val1/100.);
+		// 2014 Halloween Event : Pumpkin Bonus
+		if(sd->sc.data[SC_MTF_PUMPKIN] && itemid == ITEMID_PUMPKIN)
+			hp += (int)(hp * sd->sc.data[SC_MTF_PUMPKIN]->val1 / 100.);
 	}
 	if(sp) {
 		bonus = 100 + (sd->battle_status.int_<<1)
