@@ -719,6 +719,9 @@ int inter_init_sql(const char *file)
 			Sql_ShowDebug(sql_handle);
 	}
 
+	if( SQL_ERROR == Sql_Query(sql_handle, "INSERT INTO `interreg` (`varname`, `value`) VALUES ('users', '0')") )
+		Sql_ShowDebug(sql_handle);
+
 	wis_db = idb_alloc(DB_OPT_RELEASE_DATA);
 	inter_guild_sql_init();
 	inter_storage_sql_init();
@@ -738,6 +741,9 @@ int inter_init_sql(const char *file)
 // finalize
 void inter_final(void)
 {
+	if (SQL_ERROR == Sql_Query(sql_handle, "DELETE FROM `interreg` WHERE `varname` = 'users'"))
+		Sql_ShowDebug(sql_handle);
+
 	wis_db->destroy(wis_db, NULL);
 
 	inter_guild_sql_final();
