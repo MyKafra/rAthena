@@ -10,3 +10,4 @@
 
 //ACMD_DEF(newcommand),
 ACMD_DEF(fakeuser),
+ACMD_DEF(recallmap),
