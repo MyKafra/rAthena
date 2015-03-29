@@ -1252,6 +1252,25 @@ static bool itemdb_parse_dbrow(char** str, const char* source, int line, int scr
 	return true;
 }
 
+/** Item adjust drop rate (item_adjustrate.txt)
+* <nameid>,<adjust_rate>
+*/
+static bool itemdb_read_adjustrate(char* fields[], int colums, int current) {
+	unsigned short nameid;
+	struct item_data* id;
+
+	nameid = atoi(fields[0]);
+
+	if ( ( id = itemdb_exists(nameid) ) == NULL ) {
+		ShowWarning("itemdb_read_adjustrate: Invalid item id %hu.\n", nameid);
+		return false;
+	}
+
+	id->adjust_rate = atoi(fields[1]);
+
+	return true;
+}
+
 /**
 * Read item from item db
 * item_db2 overwriting item_db
@@ -1504,6 +1523,10 @@ static void itemdb_read(void) {
 		sv_readdb(dbsubpath2, "item_delay.txt",         ',', 2, 2, -1, &itemdb_read_itemdelay, i);
 		sv_readdb(dbsubpath2, "item_buyingstore.txt",   ',', 1, 1, -1, &itemdb_read_buyingstore, i);
 		sv_readdb(dbsubpath2, "item_flag.txt",          ',', 2, 2, -1, &itemdb_read_flag, i);
+
+		// adjust rate [Mr.Postman]
+		sv_readdb(dbsubpath1, "item_adjustrate.txt",	',', 2, 2, -1, &itemdb_read_adjustrate, i);	
+
 		aFree(dbsubpath1);
 		aFree(dbsubpath2);
 	}

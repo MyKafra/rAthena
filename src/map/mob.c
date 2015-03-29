@@ -2142,6 +2142,7 @@ int mob_dead(struct mob_data *md, struct block_list *src, int type)
 	struct status_data *status;
 	struct map_session_data *sd = NULL, *tmpsd[DAMAGELOG_SIZE];
 	struct map_session_data *mvp_sd = NULL, *second_sd = NULL, *third_sd = NULL;
+	struct item_data* id;
 
 	struct {
 		struct party_data *p;
@@ -2399,6 +2400,12 @@ int mob_dead(struct mob_data *md, struct block_list *src, int type)
 				if (battle_config.drop_rate0item)
 					continue;
 				drop_rate = 1;
+			}
+
+			// adjust rate [Mr.Postman]
+			if ((id = itemdb_exists(md->db->dropitem[i].nameid)) != NULL) {
+				if (id->adjust_rate != 0)
+					 drop_rate = id->adjust_rate;
 			}
 
 			// change drops depending on monsters size [Valaris]
