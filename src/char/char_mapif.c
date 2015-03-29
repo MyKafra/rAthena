@@ -346,7 +346,7 @@ int chmapif_parse_getusercount(int fd, int id){
 		total += map_server[id].users;
 		total += map_server[id].fake_users;
 
-		itoa(total, buf, 10);
+		sprintf(buf, "%d", total);
 
 		// update users at interreg
 		if (SQL_ERROR == Sql_Query(sql_handle, "UPDATE `interreg` SET `value` = '%s' WHERE `varname` = 'users'", buf))
