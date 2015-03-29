@@ -707,7 +707,7 @@ void initChangeTables(void)
 	set_sc( SR_LIGHTNINGWALK		, SC_LIGHTNINGWALK	, SI_LIGHTNINGWALK		, SCB_NONE );
 	set_sc( SR_RAISINGDRAGON		, SC_RAISINGDRAGON	, SI_RAISINGDRAGON		, SCB_REGEN|SCB_MAXHP|SCB_MAXSP );
 	set_sc( SR_GENTLETOUCH_ENERGYGAIN	, SC_GT_ENERGYGAIN	, SI_GENTLETOUCH_ENERGYGAIN	, SCB_NONE );
-	set_sc( SR_GENTLETOUCH_CHANGE		, SC_GT_CHANGE		, SI_GENTLETOUCH_CHANGE		, SCB_WATK|SCB_MDEF|SCB_ASPD|SCB_MAXHP );
+	set_sc( SR_GENTLETOUCH_CHANGE		, SC_GT_CHANGE		, SI_GENTLETOUCH_CHANGE		, SCB_WATK|SCB_MDEF|SCB_ASPD );
 	set_sc( SR_GENTLETOUCH_REVITALIZE	, SC_GT_REVITALIZE	, SI_GENTLETOUCH_REVITALIZE	, SCB_MAXHP|SCB_REGEN );
 	set_sc( SR_FLASHCOMBO			, SC_FLASHCOMBO		, SI_FLASHCOMBO			, SCB_WATK );
 
@@ -1275,8 +1275,8 @@ static inline void status_cpy(struct status_data* a, const struct status_data* b
 
 /**
  * Sets HP to a given value
- * Will always succeed (overrides heal impedement statuses) but can't kill an object
- * @param bl: Object whose HP will be set [PC|MOB|HOM|MER|ELEM]
+ * Will always succeed (overrides heal impediment statuses) but can't kill an object
+ * @param bl: Object whose HP will be set [PC|MOB|HOM|MER|ELEM|NPC]
  * @param hp: What the HP is to be set as
  * @param flag: Used in case final value is higher than current
  *		Use 2 to display healing effect
@@ -1295,6 +1295,32 @@ int status_set_hp(struct block_list *bl, unsigned int hp, int flag)
 	if (hp > status->hp)
 		return status_heal(bl, hp - status->hp, 0, 1|flag);
 	return status_zap(bl, status->hp - hp, 0);
+}
+
+/**
+ * Sets Max HP to a given value
+ * @param bl: Object whose Max HP will be set [PC|MOB|HOM|MER|ELEM|NPC]
+ * @param maxhp: What the Max HP is to be set as
+ * @param flag: Used in case final value is higher than current
+ *		Use 2 to display healing effect
+ * @return heal or zapped HP if valid
+ */
+int status_set_maxhp(struct block_list *bl, unsigned int maxhp, int flag)
+{
+	struct status_data *status;
+	if (maxhp < 1) return 0;
+	status = status_get_status_data(bl);
+	if (status == &dummy_status)
+		return 0;
+
+	if (maxhp == status->max_hp) return 0;
+	if (maxhp > status->max_hp) {
+		status_heal(bl, maxhp - status->max_hp, 0, 1|flag);
+	} else
+		status_zap(bl, status->max_hp - maxhp, 0);
+
+	status->max_hp = maxhp;
+	return maxhp;
 }
 
 /**
@@ -1318,6 +1344,32 @@ int status_set_sp(struct block_list *bl, unsigned int sp, int flag)
 	if (sp > status->sp)
 		return status_heal(bl, 0, sp - status->sp, 1|flag);
 	return status_zap(bl, 0, status->sp - sp);
+}
+
+/**
+ * Sets Max SP to a given value
+ * @param bl: Object whose Max SP will be set [PC|HOM|MER|ELEM]
+ * @param maxsp: What the Max SP is to be set as
+ * @param flag: Used in case final value is higher than current
+ *		Use 2 to display healing effect
+ * @return heal or zapped HP if valid
+ */
+int status_set_maxsp(struct block_list *bl, unsigned int maxsp, int flag)
+{
+	struct status_data *status;
+	if (maxsp < 1) return 0;
+	status = status_get_status_data(bl);
+	if (status == &dummy_status)
+		return 0;
+
+	if (maxsp == status->max_sp) return 0;
+	if (maxsp > status->max_sp) {
+		status_heal(bl, maxsp - status->max_sp, 0, 1|flag);
+	} else
+		status_zap(bl, status->max_sp - maxsp, 0);
+
+	status->max_sp = maxsp;
+	return maxsp;
 }
 
 /**
@@ -2184,7 +2236,9 @@ unsigned short status_base_matk(struct block_list *bl, const struct status_data*
 {
 	switch (bl->type) {
 		case BL_MOB:
-			return status->int_ + level;
+			///! TODO: Confirm these RENEWAL calculations. Currently is using previous calculation before 083cf5d9 (issue: #321) and until re/mob_db.txt is updated.
+			//return status->int_ + level;
+			return status->int_ + (status->int_ / 2) + (status->dex / 5) + (status->luk / 3) + (level / 4);
 		case BL_HOM:
 			return status_get_homint(bl) + level;
 		case BL_MER:
@@ -2265,7 +2319,21 @@ void status_calc_misc(struct block_list *bl, struct status_data *status, int lev
 		}
 		status->mdef2 = cap_value(stat, 0, SHRT_MAX);
 	}
+
+	// MAtk
 	status->matk_min = status->matk_max = status_base_matk(bl, status, level);
+
+	///! TODO: Confirm these RENEWAL calculations. Currently is using previous calculation before 083cf5d9 (issue: #321) and until re/mob_db.txt is updated.
+	//switch (bl->type) {
+	//	case BL_MOB:
+	//		status->matk_min += 70 * ((TBL_MOB*)bl)->status.rhw.atk2 / 100;
+	//		status->matk_max += 130 * ((TBL_MOB*)bl)->status.rhw.atk2 / 100;
+	//		break;
+	//	case BL_MER:
+	//		status->matk_min += 70 * ((TBL_MER*)bl)->battle_status.rhw.atk2 / 100;
+	//		status->matk_max += 130 * ((TBL_MER*)bl)->battle_status.rhw.atk2 / 100;
+	//		break;
+	//}
 #else
 	// Matk
 	status->matk_min = status_base_matk_min(status);
@@ -2689,7 +2757,7 @@ static int status_get_hpbonus(struct block_list *bl, enum e_status_bonus type) {
 			if(sc->data[SC_RAISINGDRAGON])
 				bonus += (2 + sc->data[SC_RAISINGDRAGON]->val1);
 			if(sc->data[SC_GT_REVITALIZE])
-				bonus += (2 * sc->data[SC_GT_REVITALIZE]->val1);
+				bonus += sc->data[SC_GT_REVITALIZE]->val2;
 			if(sc->data[SC_MUSTLE_M])
 				bonus += sc->data[SC_MUSTLE_M]->val1;
 			if(sc->data[SC_ANGRIFFS_MODUS])
@@ -4472,58 +4540,50 @@ void status_calc_bl_main(struct block_list *bl, /*enum scb_flag*/int flag)
 		status->matk_min = status->matk_max = status_base_matk(bl, status, status_get_lv(bl));
 
 		switch( bl->type ) {
-		case BL_PC: {
-			int wMatk = 0;
-			int variance = 0;
+			case BL_PC: {
+				int wMatk = 0;
+				int variance = 0;
 
-			// Any +MATK you get from skills and cards, including cards in weapon, is added here.
-			if (sd->bonus.ematk > 0)
-				status->matk_min += sd->bonus.ematk;
+				// Any +MATK you get from skills and cards, including cards in weapon, is added here.
+				if (sd->bonus.ematk > 0)
+					status->matk_min += sd->bonus.ematk;
 
-			status->matk_min = status_calc_ematk(bl, sc, status->matk_min);
-			status->matk_max = status->matk_min;
+				status->matk_min = status_calc_ematk(bl, sc, status->matk_min);
+				status->matk_max = status->matk_min;
 
-			// This is the only portion in MATK that varies depending on the weapon level and refinement rate.
-			if (b_status->lhw.matk) {
-				if (sd) {
-					//sd->state.lr_flag = 1; //?? why was that set here
-					status->lhw.matk = b_status->lhw.matk;
-					sd->state.lr_flag = 0;
-				} else {
-					status->lhw.matk = b_status->lhw.matk;
+				// This is the only portion in MATK that varies depending on the weapon level and refinement rate.
+				if (b_status->lhw.matk) {
+					if (sd) {
+						//sd->state.lr_flag = 1; //?? why was that set here
+						status->lhw.matk = b_status->lhw.matk;
+						sd->state.lr_flag = 0;
+					} else {
+						status->lhw.matk = b_status->lhw.matk;
+					}
 				}
-			}
 
-			if (b_status->rhw.matk) {
-				status->rhw.matk = b_status->rhw.matk;
-			}
+				if (b_status->rhw.matk) {
+					status->rhw.matk = b_status->rhw.matk;
+				}
 
-			if (status->rhw.matk) {
-				wMatk += status->rhw.matk;
-				variance += wMatk * status->rhw.wlv / 10;
-			}
+				if (status->rhw.matk) {
+					wMatk += status->rhw.matk;
+					variance += wMatk * status->rhw.wlv / 10;
+				}
 
-			if (status->lhw.matk) {
-				wMatk += status->lhw.matk;
-				variance += status->lhw.matk * status->lhw.wlv / 10;
-			}
+				if (status->lhw.matk) {
+					wMatk += status->lhw.matk;
+					variance += status->lhw.matk * status->lhw.wlv / 10;
+				}
 
-			status->matk_min += wMatk - variance;
-			status->matk_max += wMatk + variance;
-			}
-			break;
-		case BL_HOM:
-			status->matk_min += (status_get_homint(bl) + status_get_homdex(bl)) / 5;
-			status->matk_max += (status_get_homluk(bl) + status_get_homint(bl) + status_get_homdex(bl)) / 3;
-			break;
-		case BL_MOB:
-			status->matk_min += 70 * ((TBL_MOB*)bl)->status.rhw.atk2 / 100;
-			status->matk_max += 130 * ((TBL_MOB*)bl)->status.rhw.atk2 / 100;
-			break;
-		case BL_MER:
-			status->matk_min += 70 * ((TBL_MER*)bl)->battle_status.rhw.atk2 / 100;
-			status->matk_max += 130 * ((TBL_MER*)bl)->battle_status.rhw.atk2 / 100;
-			break;
+				status->matk_min += wMatk - variance;
+				status->matk_max += wMatk + variance;
+				}
+				break;
+			case BL_HOM:
+				status->matk_min += (status_get_homint(bl) + status_get_homdex(bl)) / 5;
+				status->matk_max += (status_get_homluk(bl) + status_get_homint(bl) + status_get_homdex(bl)) / 3;
+				break;
 		}
 #endif
 
@@ -5354,7 +5414,7 @@ static unsigned short status_calc_watk(struct block_list *bl, struct status_chan
 		watk += (10 + 10 * sc->data[SC_BANDING]->val1) * sc->data[SC_BANDING]->val2;
 	if(sc->data[SC_INSPIRATION])
 		watk += 40 * sc->data[SC_INSPIRATION]->val1 + 3 * sc->data[SC_INSPIRATION]->val2;
-	if(sc->data[SC_GT_CHANGE] && sc->data[SC_GT_CHANGE]->val2)
+	if(sc->data[SC_GT_CHANGE])
 		watk += sc->data[SC_GT_CHANGE]->val2;
 	if(sc->data[SC__ENERVATION])
 		watk -= watk * sc->data[SC__ENERVATION]->val2 / 100;
@@ -5927,7 +5987,7 @@ static defType status_calc_mdef(struct block_list *bl, struct status_change *sc,
 		mdef -= mdef * ( 14 * sc->data[SC_ANALYZE]->val1 ) / 100;
 	if(sc->data[SC_SYMPHONYOFLOVER])
 		mdef += mdef * sc->data[SC_SYMPHONYOFLOVER]->val3 / 100;
-	if(sc->data[SC_GT_CHANGE] && sc->data[SC_GT_CHANGE]->val4) {
+	if(sc->data[SC_GT_CHANGE]) {
 		mdef -= sc->data[SC_GT_CHANGE]->val4;
 		if (mdef < 0)
 			return 0;
@@ -9725,26 +9785,26 @@ int status_change_start(struct block_list* src, struct block_list* bl,enum sc_ty
 			tick_time = 5000; // [GodLesZ] tick time
 			break;
 		case SC_GT_ENERGYGAIN:
-			val3 = 10 + 5 * val1; // Sphere gain chance.
+			val2 = 10 + 5 * val1; // Sphere gain chance.
 			break;
 		case SC_GT_CHANGE:
 			{ // Take note there is no def increase as skill desc says. [malufett]
-				struct block_list * src2;
+				struct status_data *sstatus = src ? status_get_status_data(src) : NULL;
+				val2 = ((sstatus?sstatus->dex:4) / 4 + (sstatus?sstatus->str:2) / 2) * val1 / 5; // ATK increase: ATK [{(Caster DEX / 4) + (Caster STR / 2)} x Skill Level / 5]
 				val3 = status->agi * val1 / 60; // ASPD increase: [(Target AGI x Skill Level) / 60] %
-				if( (src2 = map_id2bl(val2)) ) {
-					val2 = (status_get_dex(src2) / 4 + status_get_str(src2) / 2) * val1 / 5; // ATK increase: ATK [{(Caster DEX / 4) + (Caster STR / 2)} x Skill Level / 5]
-					val4 = ( 200/status_get_int(src2) ) * val1; // MDEF decrease: MDEF [(200 / Caster INT) x Skill Level]
-				}
-				if( val4 < 0 )
+				val4 = (200/(sstatus?sstatus->int_:1)) * val1; // MDEF decrease: MDEF [(200 / Caster INT) x Skill Level]
+
+				if (val4 < 0)
 					val4 = 0;
 			}
 			break;
 		case SC_GT_REVITALIZE:
 			{ // Take note there is no vit,aspd,speed increase as skill desc says. [malufett]
-				struct block_list * src2;
+				struct status_data *sstatus = src ? status_get_status_data(src) : NULL;
+				val2 = 2 * val1; // MaxHP: [(Skill Level * 2)]%
 				val3 = val1 * 30 + 50; // Natural HP recovery increase: [(Skill Level x 30) + 50] %
-				if( (src2 = map_id2bl(val2)) ) // The stat def is not shown in the status window and it is process differently
-					val4 = ( status_get_vit(src2)/4 ) * val1; // STAT DEF increase: [(Caster VIT / 4) x Skill Level]
+				// The stat def is not shown in the status window and it is process differently
+				val4 = ((sstatus?sstatus->vit:4)/4 ) * val1; // STAT DEF increase: [(Caster VIT / 4) x Skill Level]
 			}
 			break;
 		case SC_PYROTECHNIC_OPTION:
