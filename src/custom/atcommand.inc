@@ -17,3 +17,26 @@
 //	clif_specialeffect(&sd->bl, 343, AREA);
 //	return 0;
 //}
+
+/**
+* Fake players online in game [Mr.Postman]
+* Usage: @fakeuser <number>
+*/
+ACMD_FUNC(fakeuser) {
+	int num = 0;
+
+	memset(atcmd_output, '\0', sizeof(atcmd_output));
+
+	if (!message || !*message || sscanf(message, "%d", &num) < 1) {
+		sprintf(atcmd_output, "Usage: @fakeuser <number>.");
+		clif_displaymessage(fd, atcmd_output);
+		return -1;
+	}
+
+	fake_users += num;
+
+	if (fake_users < 0)
+		fake_users = 0;
+
+	return 0;
+}

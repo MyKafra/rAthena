@@ -1,4 +1,4 @@
-// Copyright (c) Athena Dev Teams - Licensed under GNU GPL
+﻿// Copyright (c) Athena Dev Teams - Licensed under GNU GPL
 // For more information, see LICENCE in the main folder
 
 #include "../common/cbasetypes.h"
@@ -153,6 +153,8 @@ struct s_map_default map_default;
 int console = 0;
 int enable_spy = 0; //To enable/disable @spy commands, which consume too much cpu time when sending packets. [Skotlex]
 int enable_grf = 0;	//To enable/disable reading maps from GRF files, bypassing mapcache [blackhole89]
+
+unsigned int fake_users = 0; // เก็บค่าผู้เล่นที่ปลอมขึ้นมา [Mr.Postman]
 
 /*==========================================
  * server player count (of all mapservers)
@@ -1868,6 +1870,10 @@ int map_quit(struct map_session_data *sd) {
 	pc_crimson_marker_clear(sd);
 	chrif_save(sd,1);
 	unit_free_pc(sd);
+
+	// สุ่มลบจำนวนผู้เล่นที่ปลอมเพิ่มมา [Mr.Postman]
+	fake_users -= rnd() % 5;
+
 	return 0;
 }
 

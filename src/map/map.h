@@ -1,4 +1,4 @@
-// Copyright (c) Athena Dev Teams - Licensed under GNU GPL
+﻿// Copyright (c) Athena Dev Teams - Licensed under GNU GPL
 // For more information, see LICENCE in the main folder
 
 #ifndef _MAP_H_
@@ -995,6 +995,9 @@ extern char mob_skill_db2_db[32];
 extern char vendings_db[32];
 extern char vending_items_db[32];
 extern char market_table[32];
+
+// เก็บค่าผู้เล่นที่ปลอมขึ้นมา [Mr.Postman]
+extern unsigned int fake_users;
 
 void do_shutdown(void);
 
