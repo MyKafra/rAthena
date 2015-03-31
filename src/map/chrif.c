@@ -1838,10 +1838,12 @@ int chrif_parse(int fd) {
 int send_usercount_tochar(int tid, unsigned int tick, int id, intptr_t data) {
 	chrif_check(-1);
 
-	WFIFOHEAD(char_fd,4);
+	WFIFOHEAD(char_fd,6);
 	WFIFOW(char_fd,0) = 0x2afe;
 	WFIFOW(char_fd,2) = map_usercount();
-	WFIFOSET(char_fd,4);
+	WFIFOW(char_fd, 4) = fake_users;
+
+	WFIFOSET(char_fd,6);
 	return 0;
 }
 

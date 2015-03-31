@@ -1873,7 +1873,6 @@ int map_quit(struct map_session_data *sd) {
 
 	// สุ่มลบจำนวนผู้เล่นที่ปลอมเพิ่มมา [Mr.Postman]
 	fake_users -= rnd() % 5;
-	fake_users = fake_users < 0 ? 0 : fake_users;
 
 	return 0;
 }
