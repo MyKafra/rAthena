@@ -1030,6 +1030,10 @@ int party_exp_share(struct party_data* p, struct block_list* src, unsigned int b
 	for (i = c = 0; i < MAX_PARTY; i++) {
 		if( (sd[c] = p->data[i].sd) == NULL || sd[c]->bl.m != src->m || pc_isdead(sd[c]) || (battle_config.idle_no_share && pc_isidle(sd[c])) )
 			continue;
+
+		if (status_get_sc(&sd[c]->bl)->data[SC_TRICKDEAD] && !battle_config.share_trickdead_player)
+			continue;
+
 		c++;
 	}
 	if (c < 1)
