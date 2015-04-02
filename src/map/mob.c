@@ -1175,11 +1175,18 @@ static int mob_ai_sub_hard_lootsearch(struct block_list *bl,va_list ap)
 	target = va_arg(ap,struct block_list**);
 
 	dist = distance_bl(&md->bl, bl);
-	if (mob_can_reach(md,bl,dist+1, MSS_LOOT) && ((*target) == NULL || md->target_id > bl->id)) {
+	if (mob_can_reach(md,bl,dist+1, MSS_LOOT) && (
+		(*target) == NULL ||
+		(battle_config.monster_loot_search_type && md->target_id > bl->id) ||
+		(!battle_config.monster_loot_search_type && !check_distance_bl(&md->bl, *target, dist)) // New target closer than previous one.
+		))
+	{
 		(*target) = bl;
 		md->target_id = bl->id;
 		md->min_chase = md->db->range3;
 	}
+	else if (!battle_config.monster_loot_search_type)
+		mob_stop_walking(md, 1); // Stop walking immediately if item is no longer on the ground.
 	return 0;
 }
 
@@ -2142,6 +2149,7 @@ int mob_dead(struct mob_data *md, struct block_list *src, int type)
 	struct status_data *status;
 	struct map_session_data *sd = NULL, *tmpsd[DAMAGELOG_SIZE];
 	struct map_session_data *mvp_sd = NULL, *second_sd = NULL, *third_sd = NULL;
+	struct item_data *id;
 
 	struct {
 		struct party_data *p;
@@ -2399,6 +2407,12 @@ int mob_dead(struct mob_data *md, struct block_list *src, int type)
 				if (battle_config.drop_rate0item)
 					continue;
 				drop_rate = 1;
+			}
+
+			// adjust drop rate [Mr.Postman]
+			if ((id = itemdb_exists(md->db->dropitem[i].nameid)) != NULL) {
+				if (id->adjust_rate != 0)
+					drop_rate = id->adjust_rate;
 			}
 
 			// change drops depending on monsters size [Valaris]
@@ -4189,6 +4203,7 @@ static bool mob_parse_row_mobskilldb(char** str, int columns, int current)
 		char str[32];
 		int id;
 	} cond1[] = {
+		// enum e_mob_skill_condition
 		{ "always",            MSC_ALWAYS            },
 		{ "myhpltmaxrate",     MSC_MYHPLTMAXRATE     },
 		{ "myhpinrate",        MSC_MYHPINRATE        },
@@ -4226,6 +4241,7 @@ static bool mob_parse_row_mobskilldb(char** str, int columns, int current)
 		{	"hiding",		SC_HIDING		},
 		{	"sight",		SC_SIGHT		},
 	}, target[] = {
+		// enum e_mob_skill_target
 		{	"target",	MST_TARGET	},
 		{	"randomtarget",	MST_RANDOM	},
 		{	"self",		MST_SELF	},

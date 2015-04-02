@@ -10363,11 +10363,7 @@ BUILDIN_FUNC(hideonnpc)
  * sc_start  <effect_id>,<duration>,<val1>{,<rate>,<flag>,{<unit_id>}};
  * sc_start2 <effect_id>,<duration>,<val1>,<val2>{,<rate,<flag>,{<unit_id>}};
  * sc_start4 <effect_id>,<duration>,<val1>,<val2>,<val3>,<val4>{,<rate,<flag>,{<unit_id>}};
- * <flag>
- * 	&1: Cannot be avoided (it has to start)
- * 	&2: Tick should not be reduced (by vit, luk, lv, etc)
- * 	&4: sc_data loaded, no value has to be altered.
- * 	&8: rate should not be reduced
+ * <flag>: enum e_status_change_start_flags
  */
 BUILDIN_FUNC(sc_start)
 {
@@ -10391,9 +10387,9 @@ BUILDIN_FUNC(sc_start)
 
 	//If from NPC we make default flag 1 to be unavoidable
 	if(nd && nd->bl.id == fake_nd->bl.id)
-		flag = script_hasdata(st,5+start_type)?script_getnum(st,5+start_type):2;
+		flag = script_hasdata(st,5+start_type)?script_getnum(st,5+start_type):SCSTART_NOTICKDEF;
 	else
-		flag = script_hasdata(st,5+start_type)?script_getnum(st,5+start_type):1;
+		flag = script_hasdata(st,5+start_type)?script_getnum(st,5+start_type):SCSTART_NOAVOID;
 
 	rate = script_hasdata(st,4+start_type)?min(script_getnum(st,4+start_type),10000):10000;
 
@@ -13904,7 +13900,7 @@ BUILDIN_FUNC(getsavepoint)
 }
 
 /*==========================================
-  * Get position for  char/npc/pet/mob objects. Added by Lorky
+  * Get position for  char/NPC/pet/hom/merc/elem objects. Added by Lorky
   *
   *     int getMapXY(MapName$,MapX,MapY,type,[CharName$]);
   *             where type:
@@ -13915,7 +13911,7 @@ BUILDIN_FUNC(getsavepoint)
   *                                0 - Character coord
   *                                1 - NPC coord
   *                                2 - Pet coord
-  *                                3 - Mob coord (not released)
+  *                                3 - Mob coord (see 'getunitdata')
   *                                4 - Homun coord
   *                                5 - Mercenary coord
   *                                6 - Elemental coord
@@ -13986,7 +13982,7 @@ BUILDIN_FUNC(getmapxy)
 				bl = &sd->pd->bl;
 			break;
 		case 3:	//Get Mob Position
-			break; //Not supported?
+			break; //see 'getunitdata'
 		case 4:	//Get Homun Position
 			if(script_hasdata(st,6))
 				sd=map_nick2sd(script_getstr(st,6));
@@ -14063,6 +14059,23 @@ BUILDIN_FUNC(getmapxy)
 
 	//Return Success value
 	script_pushint(st,0);
+	return SCRIPT_CMD_SUCCESS;
+}
+
+/// Returns the map name of given map ID.
+///
+/// mapid2name <map ID>;
+BUILDIN_FUNC(mapid2name)
+{
+	uint16 m = script_getnum(st, 2);
+
+	if (m < 0 || m >= MAX_MAP_PER_SERVER) {
+		script_pushstr(st, "");
+		return SCRIPT_CMD_FAILURE;
+	}
+
+	script_pushstrcopy(st, map_mapid2mapname(m));
+
 	return SCRIPT_CMD_SUCCESS;
 }
 
@@ -15611,28 +15624,45 @@ BUILDIN_FUNC(callshop)
 		return 0;
 	}
 	shopname = script_getstr(st, 2);
-	if( script_hasdata(st,3) )
+	if (script_hasdata(st,3))
 		flag = script_getnum(st,3);
 	nd = npc_name2id(shopname);
-	if( !nd || nd->bl.type != BL_NPC || (nd->subtype != NPCTYPE_SHOP && nd->subtype != NPCTYPE_CASHSHOP && nd->subtype != NPCTYPE_ITEMSHOP && nd->subtype != NPCTYPE_POINTSHOP) )
-	{
+	if( !nd || nd->bl.type != BL_NPC || (nd->subtype != NPCTYPE_SHOP && nd->subtype != NPCTYPE_CASHSHOP && nd->subtype != NPCTYPE_ITEMSHOP && nd->subtype != NPCTYPE_POINTSHOP && nd->subtype != NPCTYPE_MARKETSHOP) ) {
 		ShowError("buildin_callshop: Shop [%s] not found (or NPC is not shop type)\n", shopname);
 		script_pushint(st,0);
 		return 1;
 	}
 
-	if( nd->subtype == NPCTYPE_SHOP || nd->subtype == NPCTYPE_ITEMSHOP || nd->subtype == NPCTYPE_POINTSHOP )
-	{
+	if (nd->subtype == NPCTYPE_SHOP || nd->subtype == NPCTYPE_ITEMSHOP || nd->subtype == NPCTYPE_POINTSHOP) {
 		// flag the user as using a valid script call for opening the shop (for floating NPCs)
 		sd->state.callshop = 1;
 
-		switch( flag )
-		{
+		switch (flag) {
 			case 1: npc_buysellsel(sd,nd->bl.id,0); break; //Buy window
 			case 2: npc_buysellsel(sd,nd->bl.id,1); break; //Sell window
 			default: clif_npcbuysell(sd,nd->bl.id); break; //Show menu
 		}
 	}
+#if PACKETVER >= 20131223
+	else if (nd->subtype == NPCTYPE_MARKETSHOP) {
+		unsigned short i;
+
+		for (i = 0; i < nd->u.shop.count; i++) {
+			if (nd->u.shop.shop_item[i].qty)
+				break;
+		}
+
+		if (i == nd->u.shop.count) {
+			clif_colormes(sd, color_table[COLOR_RED], msg_txt(sd, 534));
+			return false;
+		}
+
+		sd->npc_shopid = nd->bl.id;
+		clif_npc_market_open(sd, nd);
+		script_pushint(st,1);
+		return SCRIPT_CMD_SUCCESS;
+	}
+#endif
 	else
 		clif_cashshop_show(sd, nd);
 
@@ -15647,22 +15677,35 @@ BUILDIN_FUNC(npcshopitem)
 	struct npc_data* nd = npc_name2id(npcname);
 	int n, i;
 	int amount;
+	uint16 offs = 2;
 
-	if( !nd || ( nd->subtype != NPCTYPE_SHOP && nd->subtype != NPCTYPE_CASHSHOP && nd->subtype != NPCTYPE_ITEMSHOP && nd->subtype != NPCTYPE_POINTSHOP ) )
-	{	//Not found.
+	if( !nd || ( nd->subtype != NPCTYPE_SHOP && nd->subtype != NPCTYPE_CASHSHOP && nd->subtype != NPCTYPE_ITEMSHOP && nd->subtype != NPCTYPE_POINTSHOP && nd->subtype != NPCTYPE_MARKETSHOP ) ) { // Not found.
 		script_pushint(st,0);
 		return 0;
 	}
 
+#if PACKETVER >= 20131223
+	if (nd->subtype == NPCTYPE_MARKETSHOP) {
+		offs = 3;
+		npc_market_delfromsql_(nd->exname, 0, true);
+	}
+#endif
+
 	// get the count of new entries
-	amount = (script_lastdata(st)-2)/2;
+	amount = (script_lastdata(st)-2)/offs;
 
 	// generate new shop item list
 	RECREATE(nd->u.shop.shop_item, struct npc_item_list, amount);
-	for( n = 0, i = 3; n < amount; n++, i+=2 )
-	{
+	for (n = 0, i = 3; n < amount; n++, i+=offs) {
 		nd->u.shop.shop_item[n].nameid = script_getnum(st,i);
 		nd->u.shop.shop_item[n].value = script_getnum(st,i+1);
+#if PACKETVER >= 20131223
+		if (nd->subtype == NPCTYPE_MARKETSHOP) {
+			nd->u.shop.shop_item[n].qty = script_getnum(st,i+2);
+			nd->u.shop.shop_item[n].flag = 1;
+			npc_market_tosql(nd->exname, &nd->u.shop.shop_item[n]);
+		}
+#endif
 	}
 	nd->u.shop.count = n;
 
@@ -15676,19 +15719,47 @@ BUILDIN_FUNC(npcshopadditem)
 	struct npc_data* nd = npc_name2id(npcname);
 	int n, i;
 	int amount;
+	uint16 offs = 2;
 
-	if( !nd || ( nd->subtype != NPCTYPE_SHOP && nd->subtype != NPCTYPE_CASHSHOP && nd->subtype != NPCTYPE_ITEMSHOP && nd->subtype != NPCTYPE_POINTSHOP ) )
-	{	//Not found.
+	if (!nd || ( nd->subtype != NPCTYPE_SHOP && nd->subtype != NPCTYPE_CASHSHOP && nd->subtype != NPCTYPE_ITEMSHOP && nd->subtype != NPCTYPE_POINTSHOP && nd->subtype != NPCTYPE_MARKETSHOP)) { // Not found.
 		script_pushint(st,0);
 		return 0;
 	}
 
+	if (nd->subtype == NPCTYPE_MARKETSHOP)
+		offs = 3;
+
 	// get the count of new entries
-	amount = (script_lastdata(st)-2)/2;
+	amount = (script_lastdata(st)-2)/offs;
+
+#if PACKETVER >= 20131223
+	if (nd->subtype == NPCTYPE_MARKETSHOP) {
+		for (n = 0, i = 3; n < amount; n++, i += offs) {
+			uint16 nameid = script_getnum(st,i), j;
+
+			// Check existing entries
+			ARR_FIND(0, nd->u.shop.count, j, nd->u.shop.shop_item[j].nameid == nameid);
+			if (j == nd->u.shop.count) {
+				RECREATE(nd->u.shop.shop_item, struct npc_item_list, nd->u.shop.count+1);
+				j = nd->u.shop.count;
+				nd->u.shop.shop_item[j].flag = 1;
+				nd->u.shop.count++;
+			}
+
+			nd->u.shop.shop_item[j].nameid = nameid;
+			nd->u.shop.shop_item[j].value = script_getnum(st,i+1);
+			nd->u.shop.shop_item[j].qty = script_getnum(st,i+2);
+
+			npc_market_tosql(nd->exname, &nd->u.shop.shop_item[j]);
+		}
+		script_pushint(st,1);
+		return SCRIPT_CMD_SUCCESS;
+	}
+#endif
 
 	// append new items to existing shop item list
 	RECREATE(nd->u.shop.shop_item, struct npc_item_list, nd->u.shop.count+amount);
-	for( n = nd->u.shop.count, i = 3; n < nd->u.shop.count+amount; n++, i+=2 )
+	for (n = nd->u.shop.count, i = 3; n < nd->u.shop.count+amount; n++, i+=offs)
 	{
 		nd->u.shop.shop_item[n].nameid = script_getnum(st,i);
 		nd->u.shop.shop_item[n].value = script_getnum(st,i+1);
@@ -15707,7 +15778,7 @@ BUILDIN_FUNC(npcshopdelitem)
 	int amount;
 	int size;
 
-	if( !nd || ( nd->subtype != NPCTYPE_SHOP && nd->subtype != NPCTYPE_CASHSHOP && nd->subtype != NPCTYPE_ITEMSHOP && nd->subtype != NPCTYPE_POINTSHOP ) ) { // Not found.
+	if (!nd || ( nd->subtype != NPCTYPE_SHOP && nd->subtype != NPCTYPE_CASHSHOP && nd->subtype != NPCTYPE_ITEMSHOP && nd->subtype != NPCTYPE_POINTSHOP && nd->subtype != NPCTYPE_MARKETSHOP)) { // Not found.
 		script_pushint(st,0);
 		return 0;
 	}
@@ -15721,7 +15792,12 @@ BUILDIN_FUNC(npcshopdelitem)
 
 		ARR_FIND( 0, size, n, nd->u.shop.shop_item[n].nameid == nameid );
 		if( n < size ) {
-			memmove(&nd->u.shop.shop_item[n], &nd->u.shop.shop_item[n+1], sizeof(nd->u.shop.shop_item[0])*(size-n));
+			if (n+1 != size)
+				memmove(&nd->u.shop.shop_item[n], &nd->u.shop.shop_item[n+1], sizeof(nd->u.shop.shop_item[0])*(size-n));
+#if PACKETVER >= 20131223
+			if (nd->subtype == NPCTYPE_MARKETSHOP)
+				npc_market_delfromsql_(nd->exname, nameid, false);
+#endif
 			size--;
 		}
 	}
@@ -15733,7 +15809,10 @@ BUILDIN_FUNC(npcshopdelitem)
 	return SCRIPT_CMD_SUCCESS;
 }
 
-//Sets a script to attach to a shop npc.
+/**
+ * Sets a script to attach to a shop npc.
+ * npcshopattach "<npc_name>";
+ **/
 BUILDIN_FUNC(npcshopattach)
 {
 	const char* npcname = script_getstr(st,2);
@@ -15743,8 +15822,7 @@ BUILDIN_FUNC(npcshopattach)
 	if( script_hasdata(st,3) )
 		flag = script_getnum(st,3);
 
-	if( !nd || ( nd->subtype != NPCTYPE_SHOP && nd->subtype != NPCTYPE_CASHSHOP && nd->subtype != NPCTYPE_ITEMSHOP && nd->subtype != NPCTYPE_POINTSHOP ) )
-	{	//Not found.
+	if (!nd || ( nd->subtype != NPCTYPE_SHOP && nd->subtype != NPCTYPE_CASHSHOP && nd->subtype != NPCTYPE_ITEMSHOP && nd->subtype != NPCTYPE_POINTSHOP && nd->subtype != NPCTYPE_MARKETSHOP)) { // Not found.
 		script_pushint(st,0);
 		return 0;
 	}
@@ -16252,16 +16330,15 @@ BUILDIN_FUNC(getunitdata)
 			getunitdata_sub(19,md->vd->cloth_color);
 			getunitdata_sub(20,md->vd->shield);
 			getunitdata_sub(21,md->vd->weapon);
-			getunitdata_sub(22,md->vd->shield);
-			getunitdata_sub(23,md->ud.dir);
-			getunitdata_sub(24,md->status.str);
-			getunitdata_sub(25,md->status.agi);
-			getunitdata_sub(26,md->status.vit);
-			getunitdata_sub(27,md->status.int_);
-			getunitdata_sub(28,md->status.dex);
-			getunitdata_sub(29,md->status.luk);
-			getunitdata_sub(30,md->state.copy_master_mode);
-			getunitdata_sub(31,md->ud.immune_attack);
+			getunitdata_sub(22,md->ud.dir);
+			getunitdata_sub(23,md->status.str);
+			getunitdata_sub(24,md->status.agi);
+			getunitdata_sub(25,md->status.vit);
+			getunitdata_sub(26,md->status.int_);
+			getunitdata_sub(27,md->status.dex);
+			getunitdata_sub(28,md->status.luk);
+			getunitdata_sub(29,md->state.copy_master_mode);
+			getunitdata_sub(30,md->ud.immune_attack);
 			break;
 
 		case BL_HOM:
@@ -16411,13 +16488,15 @@ BUILDIN_FUNC(getunitdata)
 BUILDIN_FUNC(setunitdata)
 {
 	struct block_list* bl = NULL;
+	struct script_data* data;
+	const char *mapname = NULL;
 	TBL_MOB* md = NULL;
 	TBL_HOM* hd = NULL;
 	TBL_MER* mc = NULL;
 	TBL_PET* pd = NULL;
 	TBL_ELEM* ed = NULL;
 	TBL_NPC* nd = NULL;
-	int type, value;
+	int type, value = 0;
 
 	bl = map_id2bl(script_getnum(st, 2));
 
@@ -16436,7 +16515,17 @@ BUILDIN_FUNC(setunitdata)
 	}
 
 	type = script_getnum(st, 3);
-	value = script_getnum(st, 4);
+	data = script_getdata(st, 4);
+	get_val(st, data);
+
+	if (type == 5 && data_isstring(data))
+		mapname = conv_str(st, data);
+	else if (data_isint(data))
+		value = conv_num(st, data);
+	else {
+		ShowError("buildin_setunitdata: Invalid data type for argument #3 (%d).", data->type);
+		return SCRIPT_CMD_FAILURE;
+	}
 
 	switch (bl->type) {
 	case BL_MOB:
@@ -16447,36 +16536,35 @@ BUILDIN_FUNC(setunitdata)
 		switch (type) {
 			case 0: md->status.size = (unsigned char)value; break;
 			case 1: md->level = (unsigned short)value; break;
-			case 2: md->status.hp = (unsigned int)value; break;
-			case 3: md->status.max_hp = (unsigned int)value; break;
+			case 2: status_set_hp(bl, (unsigned int)value, 0); break;
+			case 3: status_set_maxhp(bl, (unsigned int)value, 0); break;
 			case 4: md->master_id = value; break;
-			case 5: md->bl.m = (short)value; break;
-			case 6: md->bl.x = (short)value; break;
-			case 7: md->bl.y = (short)value; break;
-			case 8: md->status.speed = (unsigned short)value; break;
-			case 9: md->status.mode = (enum e_mode)value; break;
+			case 5: if (mapname) value = map_mapname2mapid(mapname); unit_warp(bl, (short)value, 0, 0, 3); break;
+			case 6: if (!unit_walktoxy(bl, (short)value, md->bl.y, 2)) unit_movepos(bl, (short)value, md->bl.y, 0, 0); break;
+			case 7: if (!unit_walktoxy(bl, md->bl.x, (short)value, 2)) unit_movepos(bl, md->bl.x, (short)value, 0, 0); break;
+			case 8: md->status.speed = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 9: md->status.mode = (enum e_mode)value; status_calc_bl(bl, SCB_MODE); break;
 			case 10: md->special_state.ai = (enum mob_ai)value; break;
 			case 11: md->sc.option = (unsigned short)value; break;
 			case 12: md->vd->sex = (char)value; break;
-			case 13: md->vd->class_ = (unsigned short)value; break;
-			case 14: md->vd->hair_style = (unsigned short)value; break;
-			case 15: md->vd->hair_color = (unsigned short)value; break;
-			case 16: md->vd->head_bottom = (unsigned short)value; break;
-			case 17: md->vd->head_mid = (unsigned short)value; break;
-			case 18: md->vd->head_top = (unsigned short)value; break;
-			case 19: md->vd->cloth_color = (unsigned short)value; break;
-			case 20: md->vd->shield = (unsigned short)value; break;
-			case 21: md->vd->weapon = (unsigned short)value; break;
-			case 22: md->vd->shield = (unsigned short)value; break;
-			case 23: md->ud.dir = (unsigned char)value; break;
-			case 24: md->status.str = (unsigned int)value; break;
-			case 25: md->status.agi = (unsigned int)value; break;
-			case 26: md->status.vit = (unsigned int)value; break;
-			case 27: md->status.int_ = (unsigned int)value; break;
-			case 28: md->status.dex = (unsigned int)value; break;
-			case 29: md->status.luk = (unsigned int)value; break;
-			case 30: md->state.copy_master_mode = value > 0 ? 1 : 0; break;
-			case 31: md->ud.immune_attack = (bool)value > 0 ? 1 : 0; break;
+			case 13: status_set_viewdata(bl, (unsigned short)value); break;
+			case 14: clif_changelook(bl, LOOK_HAIR, (unsigned short)value); break;
+			case 15: clif_changelook(bl, LOOK_HAIR_COLOR, (unsigned short)value); break;
+			case 16: clif_changelook(bl, LOOK_HEAD_BOTTOM, (unsigned short)value); break;
+			case 17: clif_changelook(bl, LOOK_HEAD_MID, (unsigned short)value); break;
+			case 18: clif_changelook(bl, LOOK_HEAD_TOP, (unsigned short)value); break;
+			case 19: clif_changelook(bl, LOOK_CLOTHES_COLOR, (unsigned short)value); break;
+			case 20: clif_changelook(bl, LOOK_SHIELD, (unsigned short)value); break;
+			case 21: clif_changelook(bl, LOOK_WEAPON, (unsigned short)value); break;
+			case 22: unit_setdir(bl, (uint8)value); break;
+			case 23: md->status.str = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 24: md->status.agi = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 25: md->status.vit = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 26: md->status.int_ = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 27: md->status.dex = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 28: md->status.luk = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 29: md->state.copy_master_mode = value > 0 ? 1 : 0; status_calc_bl(bl, SCB_MODE); break;
+			case 30: md->ud.immune_attack = (bool)value > 0 ? 1 : 0; break;
 			default:
 				ShowError("buildin_setunitdata: Unknown data identifier %d for BL_MOB.\n", type);
 				return SCRIPT_CMD_FAILURE;
@@ -16491,25 +16579,25 @@ BUILDIN_FUNC(setunitdata)
 		switch (type) {
 			case 0: hd->base_status.size = (unsigned char)value; break;
 			case 1: hd->homunculus.level = (unsigned short)value; break;
-			case 2: hd->homunculus.hp = (unsigned int)value; break;
-			case 3: hd->homunculus.max_hp = (unsigned int)value; break;
-			case 4: hd->homunculus.sp = (unsigned int)value; break;
-			case 5: hd->homunculus.max_sp = (unsigned int)value; break;
-			case 6: hd->homunculus.char_id = (unsigned int)value; break;
-			case 7: hd->bl.m = (short)value; break;
-			case 8: hd->bl.x = (short)value; break;
-			case 9: hd->bl.y = (short)value; break;
-			case 10: hd->homunculus.hunger = (short)value; break;
-			case 11: hd->homunculus.intimacy = (unsigned int)value; break;
-			case 12: hd->base_status.speed = (unsigned short)value; break;
-			case 13: hd->ud.dir = (unsigned char)value; break;
+			case 2: status_set_hp(bl, (unsigned int)value, 0); break;
+			case 3: status_set_maxhp(bl, (unsigned int)value, 0); break;
+			case 4: status_set_sp(bl, (unsigned int)value, 0); break;
+			case 5: status_set_maxsp(bl, (unsigned int)value, 0); break;
+			case 6: hd->homunculus.char_id = (uint32)value; break;
+			case 7: if (mapname) value = map_mapname2mapid(mapname); unit_warp(bl, (short)value, 0, 0, 3); break;
+			case 8: if (!unit_walktoxy(bl, (short)value, hd->bl.y, 2)) unit_movepos(bl, (short)value, hd->bl.y, 0, 0); break;
+			case 9: if (!unit_walktoxy(bl, hd->bl.x, (short)value, 2)) unit_movepos(bl, hd->bl.x, (short)value, 0, 0); break;
+			case 10: hd->homunculus.hunger = (short)value; clif_send_homdata(map_charid2sd(hd->homunculus.char_id), SP_HUNGRY, hd->homunculus.hunger); break;
+			case 11: hom_increase_intimacy(hd, (unsigned int)value); clif_send_homdata(map_charid2sd(hd->homunculus.char_id), SP_INTIMATE, hd->homunculus.intimacy / 100); break;
+			case 12: hd->base_status.speed = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 13: unit_setdir(bl, (uint8)value); break;
 			case 14: hd->ud.canmove_tick = value > 0 ? 1 : 0; break;
-			case 15: hd->base_status.str = (unsigned int)value; break;
-			case 16: hd->base_status.agi = (unsigned int)value; break;
-			case 17: hd->base_status.vit = (unsigned int)value; break;
-			case 18: hd->base_status.int_ = (unsigned int)value; break;
-			case 19: hd->base_status.dex = (unsigned int)value; break;
-			case 20: hd->base_status.luk = (unsigned int)value; break;
+			case 15: hd->base_status.str = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 16: hd->base_status.agi = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 17: hd->base_status.vit = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 18: hd->base_status.int_ = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 19: hd->base_status.dex = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 20: hd->base_status.luk = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
 			case 21: hd->ud.immune_attack = (bool)value > 0 ? 1 : 0; break;
 			default:
 				ShowError("buildin_setunitdata: Unknown data identifier %d for BL_HOM.\n", type);
@@ -16525,23 +16613,23 @@ BUILDIN_FUNC(setunitdata)
 		switch (type) {
 			case 0: pd->status.size = (unsigned char)value; break;
 			case 1: pd->pet.level = (unsigned short)value; break;
-			case 2: pd->status.hp = (unsigned int)value; break;
-			case 3: pd->status.max_hp = (unsigned int)value; break;
+			case 2: status_set_hp(bl, (unsigned int)value, 0); break;
+			case 3: status_set_maxhp(bl, (unsigned int)value, 0); break;
 			case 4: pd->pet.account_id = (unsigned int)value; break;
-			case 5: pd->bl.m = (short)value; break;
-			case 6: pd->bl.x = (short)value; break;
-			case 7: pd->bl.y = (short)value; break;
-			case 8: pd->pet.hungry = (short)value; break;
-			case 9: pd->pet.intimate = (unsigned int)value; break;
-			case 10: pd->status.speed = (unsigned short)value; break;
-			case 11: pd->ud.dir = (unsigned char)value; break;
+			case 5: if (mapname) value = map_mapname2mapid(mapname); unit_warp(bl, (short)value, 0, 0, 3); break;
+			case 6: if (!unit_walktoxy(bl, (short)value, pd->bl.y, 2)) unit_movepos(bl, (short)value, md->bl.y, 0, 0); break;
+			case 7: if (!unit_walktoxy(bl, pd->bl.x, (short)value, 2)) unit_movepos(bl, pd->bl.x, (short)value, 0, 0); break;
+			case 8: pd->pet.hungry = (short)value; clif_send_petdata(map_id2sd(pd->pet.account_id), pd, 2, pd->pet.hungry); break;
+			case 9: pet_set_intimate(pd, (unsigned int)value); clif_send_petdata(map_id2sd(pd->pet.account_id), pd, 1, pd->pet.intimate); break;
+			case 10: pd->status.speed = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 11: unit_setdir(bl, (uint8)value); break;
 			case 12: pd->ud.canmove_tick = value > 0 ? 1 : 0; break;
-			case 13: pd->status.str = (unsigned int)value; break;
-			case 14: pd->status.agi = (unsigned int)value; break;
-			case 15: pd->status.vit = (unsigned int)value; break;
-			case 16: pd->status.int_ = (unsigned int)value; break;
-			case 17: pd->status.dex = (unsigned int)value; break;
-			case 18: pd->status.luk = (unsigned int)value; break;
+			case 13: pd->status.str = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 14: pd->status.agi = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 15: pd->status.vit = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 16: pd->status.int_ = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 17: pd->status.dex = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 18: pd->status.luk = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
 			case 19: pd->ud.immune_attack = (bool)value > 0 ? 1 : 0; break;
 			default:
 				ShowError("buildin_setunitdata: Unknown data identifier %d for BL_PET.\n", type);
@@ -16556,23 +16644,23 @@ BUILDIN_FUNC(setunitdata)
 		}
 		switch (type) {
 			case 0: mc->base_status.size = (unsigned char)value; break;
-			case 1: mc->base_status.hp = (unsigned int)value; break;
-			case 2: mc->base_status.max_hp = (unsigned int)value; break;
-			case 3: mc->mercenary.char_id = (unsigned int)value; break;
-			case 4: mc->bl.m = (short)value; break;
-			case 5: mc->bl.x = (short)value; break;
-			case 6: mc->bl.y = (short)value; break;
+			case 1: status_set_hp(bl, (unsigned int)value, 0); break;
+			case 2: status_set_maxhp(bl, (unsigned int)value, 0); break;
+			case 3: mc->mercenary.char_id = (uint32)value; break;
+			case 4: if (mapname) value = map_mapname2mapid(mapname); unit_warp(bl, (short)value, 0, 0, 3); break;
+			case 5: if (!unit_walktoxy(bl, (short)value, mc->bl.y, 2)) unit_movepos(bl, (short)value, mc->bl.y, 0, 0); break;
+			case 6: if (!unit_walktoxy(bl, mc->bl.x, (short)value, 2)) unit_movepos(bl, mc->bl.x, (short)value, 0, 0); break;
 			case 7: mc->mercenary.kill_count = (unsigned int)value; break;
 			case 8: mc->mercenary.life_time = (unsigned int)value; break;
-			case 9: mc->base_status.speed = (unsigned short)value; break;
-			case 10: mc->ud.dir = (unsigned char)value; break;
+			case 9: mc->base_status.speed = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 10: unit_setdir(bl, (uint8)value); break;
 			case 11: mc->ud.canmove_tick = value > 0 ? 1 : 0; break;
-			case 12: mc->base_status.str = (unsigned int)value; break;
-			case 13: mc->base_status.agi = (unsigned int)value; break;
-			case 14: mc->base_status.vit = (unsigned int)value; break;
-			case 15: mc->base_status.int_ = (unsigned int)value; break;
-			case 16: mc->base_status.dex = (unsigned int)value; break;
-			case 17: mc->base_status.luk = (unsigned int)value; break;
+			case 12: mc->base_status.str = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 13: mc->base_status.agi = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 14: mc->base_status.vit = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 15: mc->base_status.int_ = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 16: mc->base_status.dex = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 17: mc->base_status.luk = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
 			case 18: mc->ud.immune_attack = (bool)value > 0 ? 1 : 0; break;
 			default:
 				ShowError("buildin_setunitdata: Unknown data identifier %d for BL_MER.\n", type);
@@ -16587,25 +16675,25 @@ BUILDIN_FUNC(setunitdata)
 		}
 		switch (type) {
 			case 0: ed->base_status.size = (unsigned char)value; break;
-			case 1: ed->elemental.hp = (unsigned int)value; break;
-			case 2: ed->elemental.max_hp = (unsigned int)value; break;
-			case 3: ed->elemental.sp = (unsigned int)value; break;
-			case 4: ed->elemental.max_sp = (unsigned int)value; break;
-			case 5: ed->elemental.char_id = (unsigned int)value; break;
-			case 6: ed->bl.m = (short)value; break;
-			case 7: ed->bl.x = (short)value; break;
-			case 8: ed->bl.y = (short)value; break;
+			case 1: status_set_hp(bl, (unsigned int)value, 0); break;
+			case 2: status_set_maxhp(bl, (unsigned int)value, 0); break;
+			case 3: status_set_sp(bl, (unsigned int)value, 0); break;
+			case 4: status_set_maxsp(bl, (unsigned int)value, 0); break;
+			case 5: ed->elemental.char_id = (uint32)value; break;
+			case 6: if (mapname) value = map_mapname2mapid(mapname); unit_warp(bl, (short)value, 0, 0, 3); break;
+			case 7: if (!unit_walktoxy(bl, (short)value, ed->bl.y, 2)) unit_movepos(bl, (short)value, ed->bl.y, 0, 0); break;
+			case 8: if (!unit_walktoxy(bl, ed->bl.x, (short)value, 2)) unit_movepos(bl, ed->bl.x, (short)value, 0, 0); break;
 			case 9: ed->elemental.life_time = (unsigned int)value; break;
-			case 10: ed->elemental.mode = (unsigned int)value; break;
-			case 11: ed->base_status.speed = (unsigned short)value; break;
-			case 12: ed->ud.dir = (unsigned char)value; break;
+			case 10: ed->elemental.mode = (unsigned int)value; status_calc_bl(bl, SCB_MODE); break;
+			case 11: ed->base_status.speed = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 12: unit_setdir(bl, (uint8)value); break;
 			case 13: ed->ud.canmove_tick = value > 0 ? 1 : 0; break;
-			case 14: ed->base_status.str = (unsigned int)value; break;
-			case 15: ed->base_status.agi = (unsigned int)value; break;
-			case 16: ed->base_status.vit = (unsigned int)value; break;
-			case 17: ed->base_status.int_ = (unsigned int)value; break;
-			case 18: ed->base_status.dex = (unsigned int)value; break;
-			case 19: ed->base_status.luk = (unsigned int)value; break;
+			case 14: ed->base_status.str = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 15: ed->base_status.agi = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 16: ed->base_status.vit = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 17: ed->base_status.int_ = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 18: ed->base_status.dex = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 19: ed->base_status.luk = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
 			case 20: ed->ud.immune_attack = (bool)value > 0 ? 1 : 0; break;
 			default:
 				ShowError("buildin_setunitdata: Unknown data identifier %d for BL_ELEM.\n", type);
@@ -16619,20 +16707,20 @@ BUILDIN_FUNC(setunitdata)
 			return SCRIPT_CMD_FAILURE;
 		}
 		switch (type) {
-			case 0: nd->class_ = (unsigned int)value; break;
+			case 0: status_set_viewdata(bl, (unsigned short)value); break;
 			case 1: nd->level = (unsigned int)value; break;
-			case 2: nd->status.hp = (unsigned int)value; break;
-			case 3: nd->status.max_hp = (unsigned int)value; break;
-			case 4: nd->bl.m = (short)value; break;
-			case 5: nd->bl.x = (short)value; break;
-			case 6: nd->bl.y = (short)value; break;
-			case 7: nd->ud.dir = (unsigned char)value; break;
-			case 8: nd->status.str = (unsigned int)value; break;
-			case 9: nd->status.agi = (unsigned int)value; break;
-			case 10: nd->status.vit = (unsigned int)value; break;
-			case 11: nd->status.int_ = (unsigned int)value; break;
-			case 12: nd->status.dex = (unsigned int)value; break;
-			case 13: nd->status.luk = (unsigned int)value; break;
+			case 2: status_set_hp(bl, (unsigned int)value, 0); break;
+			case 3: status_set_maxhp(bl, (unsigned int)value, 0); break;
+			case 4: if (mapname) value = map_mapname2mapid(mapname); unit_warp(bl, (short)value, 0, 0, 3); break;
+			case 5: if (!unit_walktoxy(bl, (short)value, nd->bl.y, 2)) unit_movepos(bl, (short)value, nd->bl.x, 0, 0); break;
+			case 6: if (!unit_walktoxy(bl, nd->bl.x, (short)value, 2)) unit_movepos(bl, nd->bl.x, (short)value, 0, 0); break;
+			case 7: unit_setdir(bl, (uint8)value); break;
+			case 8: nd->status.str = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 9: nd->status.agi = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 10: nd->status.vit = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 11: nd->status.int_ = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 12: nd->status.dex = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
+			case 13: nd->status.luk = (unsigned short)value; status_calc_bl(bl, SCB_ALL); break;
 			default:
 				ShowError("buildin_setunitdata: Unknown data identifier %d for BL_NPC.\n", type);
 				return SCRIPT_CMD_FAILURE;
@@ -16938,7 +17026,7 @@ BUILDIN_FUNC(unittalk)
 ///
 /// unitemote <unit_id>,<emotion>;
 ///
-/// @see e_* in const.txt
+/// @see e_* in db/const.txt
 BUILDIN_FUNC(unitemote)
 {
 	int unit_id;
@@ -17008,7 +17096,7 @@ BUILDIN_FUNC(unitskillusepos)
 	return SCRIPT_CMD_SUCCESS;
 }
 
-// <--- [zBuffer] List of mob control commands
+// <--- [zBuffer] List of unit control commands
 
 /// Pauses the execution of the script, detaching the player
 ///
@@ -19777,6 +19865,49 @@ BUILDIN_FUNC(mergeitem) {
 	return SCRIPT_CMD_SUCCESS;
 }
 
+/**
+ * Update an entry from NPC shop.
+ * npcshopupdate "<name>",<item_id>,<price>{,<stock>}
+ **/
+BUILDIN_FUNC(npcshopupdate) {
+	const char* npcname = script_getstr(st, 2);
+	struct npc_data* nd = npc_name2id(npcname);
+	uint16 nameid = script_getnum(st, 3);
+	int price = script_getnum(st, 4);
+#if PACKETVER >= 20131223
+	uint16 stock = script_hasdata(st,5) ? script_getnum(st,5) : 0;
+#endif
+	int i;
+
+	if( !nd || ( nd->subtype != NPCTYPE_SHOP && nd->subtype != NPCTYPE_CASHSHOP && nd->subtype != NPCTYPE_ITEMSHOP && nd->subtype != NPCTYPE_POINTSHOP && nd->subtype != NPCTYPE_MARKETSHOP ) ) { // Not found.
+		script_pushint(st,0);
+		return SCRIPT_CMD_FAILURE;
+	}
+	
+	if (!nd->u.shop.count) {
+		ShowError("buildin_npcshopupdate: Attempt to update empty shop from '%s'.\n", nd->exname);
+		script_pushint(st,0);
+		return SCRIPT_CMD_FAILURE;
+	}
+
+	for (i = 0; i < nd->u.shop.count; i++) {
+		if (nd->u.shop.shop_item[i].nameid == nameid) {
+
+			if (price != 0)
+				nd->u.shop.shop_item[i].value = price;
+#if PACKETVER >= 20131223
+			if (nd->subtype == NPCTYPE_MARKETSHOP) {
+				nd->u.shop.shop_item[i].qty = stock;
+				npc_market_tosql(nd->exname, &nd->u.shop.shop_item[i]);
+			}
+#endif
+		}
+	}
+
+	script_pushint(st,1);
+	return SCRIPT_CMD_SUCCESS;
+}
+
 #include "../custom/script.inc"
 
 // declarations that were supposed to be exported from npc_chat.c
@@ -20085,6 +20216,7 @@ struct script_function buildin_func[] = {
 	BUILDIN_DEF(npcwalkto,"ii"), // [Valaris]
 	BUILDIN_DEF(npcstop,""), // [Valaris]
 	BUILDIN_DEF(getmapxy,"rrri?"),	//by Lorky [Lupus]
+	BUILDIN_DEF(mapid2name,"i"),
 	BUILDIN_DEF(checkoption1,"i"),
 	BUILDIN_DEF(checkoption2,"i"),
 	BUILDIN_DEF(guildgetexp,"i"),
@@ -20325,6 +20457,8 @@ struct script_function buildin_func[] = {
 	BUILDIN_DEF(delspiritball,"i?"),
 	BUILDIN_DEF(countspiritball,"?"),
 	BUILDIN_DEF(mergeitem,"?"),
+
+	BUILDIN_DEF(npcshopupdate,"sii?"),
 
 #include "../custom/script_def.inc"
 

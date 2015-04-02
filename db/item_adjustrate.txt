@@ -1,0 +1,51 @@
+// Item Adjust Rate
+// <nameid>,<adjust_rate>
+
+//909,-1	// [TEST] Jellopy
+4047,-1	// Ghostring Card 
+4174,-1	// Deviling Card 
+4121,-1	// Phreeoni Card
+4123,-1	// Eddga Card
+4128,-1	// Golden Thief Bug Card
+4131,-1	// Moonlight Flower Card
+4132,-1	// Mistress Card
+4134,-1	// Dracula Card
+4135,-1	// Orc Lord Card
+4137,-1	// Drake Card
+4142,-1	// Doppelganger Card
+4143,-1	// Orc Hero Card
+4144,-1	// Osiris Card
+4145,-1	// Beelzebub Card
+4146,-1	// Maya Card
+4198,-1	// Maya Purple Card	
+4147,-1	// Baphomet Card
+4148,-1	// Pharaoh Card
+4168,-1	// Dark Lord Card
+4236,-1	// Amon Ra 
+4263,-1	// Samurai Spector Card (Incantation Samurai Card)
+4276,-1	// Lord of The Dead Card
+4302,-1	// Tao Gunka Card
+4305,-1	// Turtle General Card
+4318,-1	// Stormy Knight Card
+4324,-1	// Garm Card
+4330,-1	// Evil Snake Lord Card
+4342,-1	// RSX-0806 Card
+4352,-1	// General Egnigem Cenia Card
+4357,-1	// Lord Knight Card
+4359,-1	// Assassin Cross Card
+4361,-1	// MasterSmith Card (Whitesmith Card)
+4363,-1	// High Priest Card
+4365,-1	// High Wizard Card
+4367,-1	// Sniper Card
+4372,-1	// White Lay Card
+4374,-1	// Vesper Card
+4376,-1	// Lady Tanee Card
+4386,-1	// Detale Card (Detardeurus Card)
+4399,-1	// Memory of Thanatos Card (Thanatos Card)
+4407,-1	// Randgris Card (Valkyrie Randgris Card)
+4419,-1	// Ktullanux Card
+4403,-1	// Kiel D-01 Card
+4408,-1	// Gloom Under Night Card
+4425,-1	// Atroce Card
+4430,-1	// Ifrit Card
+4441,-1	// Fallen Bishop Hibram Card
