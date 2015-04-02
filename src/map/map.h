@@ -997,7 +997,7 @@ extern char vending_items_db[32];
 extern char market_table[32];
 
 // เก็บค่าผู้เล่นที่ปลอมขึ้นมา [Mr.Postman]
-extern unsigned int fake_users;
+extern int fake_users;
 
 void do_shutdown(void);
 
