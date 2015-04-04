@@ -7977,6 +7977,7 @@ static const struct _battle_data {
 	{ "monster_loot_search_type",           &battle_config.monster_loot_search_type,        1,      0,      1,              },
 
 	{ "share_trickdead_player", 			&battle_config.share_trickdead_player,			1,		0,		1,				},
+	{ "asura_strike_canbreakable",			&battle_config.asura_strike_canbreakable,		1,		0,		1,				},
 };
 
 #ifndef STATS_OPT_OUT
