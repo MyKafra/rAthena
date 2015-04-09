@@ -29,12 +29,12 @@
 
 /// Uncomment to disable rAthena's anonymous stat report
 /// We kindly ask you to consider keeping it enabled, it helps us improve rAthena.
-//#define STATS_OPT_OUT
+#define STATS_OPT_OUT
 
 /// uncomment to enable query_sql script command and mysql logs to function on it's own thread
 /// be aware this feature is under tests and you should use at your own risk, we however
 /// welcome any feedback you may have regarding this feature, please send us all bug reports.
-//#define BETA_THREAD_TEST
+#define BETA_THREAD_TEST
 
 /// Uncomment to enable the Cell Stack Limit mod.
 /// It's only config is the battle_config custom_cell_stack_limit.
@@ -97,7 +97,7 @@
 /// When enabled, make sure there is value for 'packet_keys' of used packet version or
 /// defined 'packet_keys_use' in db/[import/]packet_db.txt.
 /// This requires PACKETVER 2011-08-17 or newer.
-#define PACKET_OBFUSCATION
+//#define PACKET_OBFUSCATION
 
 /**
  * No settings past this point
