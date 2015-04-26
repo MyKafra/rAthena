@@ -1818,7 +1818,7 @@ int pc_calc_skilltree_normalize_job(struct map_session_data *sd)
 		c = MAPID_NOVICE;
 	}
 	// limit 2nd class and above to first class job levels (super novices are exempt)
-	else if (sd->class_&JOBL_2 && !(sd->class_&JOBL_SUPER_NOVICE))
+	else if (sd->class_&JOBL_2 && (sd->class_&MAPID_UPPERMASK) != MAPID_SUPER_NOVICE)
 	{
 		// regenerate change_level_2nd
 		if (!sd->change_level_2nd)
@@ -5779,8 +5779,7 @@ int pc_jobid2mapid(unsigned short b_class)
 //Reverts the map-style class id to the client-style one.
 int pc_mapid2jobid(unsigned short class_, int sex)
 {
-	switch(class_)
-	{
+	switch(class_) {
 	//Novice And 1-1 Jobs
 		case MAPID_NOVICE:                return JOB_NOVICE;
 		case MAPID_SWORDMAN:              return JOB_SWORDMAN;
@@ -6244,7 +6243,7 @@ int pc_checkbaselevelup(struct map_session_data *sd) {
 	status_calc_pc(sd,SCO_FORCE);
 	status_percent_heal(&sd->bl,100,100);
 
-	if(sd->class_&JOBL_SUPER_NOVICE) {
+	if ((sd->class_&MAPID_UPPERMASK) == MAPID_SUPER_NOVICE) {
 		sc_start(&sd->bl,&sd->bl,status_skill2sc(PR_KYRIE),100,1,skill_get_time(PR_KYRIE,1));
 		sc_start(&sd->bl,&sd->bl,status_skill2sc(PR_IMPOSITIO),100,1,skill_get_time(PR_IMPOSITIO,1));
 		sc_start(&sd->bl,&sd->bl,status_skill2sc(PR_MAGNIFICAT),100,1,skill_get_time(PR_MAGNIFICAT,1));
@@ -7256,7 +7255,7 @@ int pc_dead(struct map_session_data *sd,struct block_list *src)
 
 	// Activate Steel body if a super novice dies at 99+% exp [celest]
 	// Super Novices have no kill or die functions attached when saved by their angel
-	if (sd->class_&JOBL_SUPER_NOVICE && !sd->state.snovice_dead_flag) {
+	if (!sd->state.snovice_dead_flag && (sd->class_&MAPID_UPPERMASK) == MAPID_SUPER_NOVICE) {
 		unsigned int next = pc_nextbaseexp(sd);
 
 		if( next == 0 ) next = pc_thisbaseexp(sd);
@@ -8084,7 +8083,7 @@ bool pc_jobchange(struct map_session_data *sd,int job, char upper)
 		return false; //Nothing to change.
 
 	// changing from 1st to 2nd job
-	if ((b_class&JOBL_2) && !(sd->class_&JOBL_2) && !(b_class&JOBL_SUPER_NOVICE)) {
+	if ((b_class&JOBL_2) && !(sd->class_&JOBL_2) && (sd->class_&MAPID_UPPERMASK) != MAPID_SUPER_NOVICE) {
 		sd->change_level_2nd = sd->status.job_level;
 		pc_setglobalreg (sd, "jobchange_level", sd->change_level_2nd);
 	}
@@ -8728,7 +8727,7 @@ bool pc_setregistry(struct map_session_data *sd,const char *reg,int val,int type
 	{
 	case 3: //Char reg
 		if( !strcmp(reg,"PC_DIE_COUNTER") && sd->die_counter != val ) {
-			i = (!sd->die_counter && sd->class_&JOBL_SUPER_NOVICE);
+			i = (!sd->die_counter && (sd->class_&MAPID_UPPERMASK) == MAPID_SUPER_NOVICE);
 			sd->die_counter = val;
 			if( i )
 				status_calc_pc(sd,SCO_NONE); // Lost the bonus.
@@ -10470,17 +10469,50 @@ static bool pc_readdb_levelpenalty(char* fields[], int columns, int current)
 /** [Cydh]
 * Calculates base hp of player. Reference: http://irowiki.org/wiki/Max_HP
 * @param level Base level of player
-* @param idx Index of class
+* @param class_ Job ID @see enum e_job
 * @return base_hp
 */
-static unsigned int pc_calc_basehp(uint16 level, uint16 class_idx) {
+static unsigned int pc_calc_basehp(uint16 level, uint16 class_) {
 	double base_hp;
-	uint16 i;
+	uint16 i, idx = pc_class2idx(class_);
 
-	base_hp = 35 + level * (job_info[class_idx].hp_multiplicator/100.);
+	base_hp = 35 + level * (job_info[idx].hp_multiplicator/100.);
+#ifndef RENEWAL
+	if(level >= 10 && (class_ == JOB_NINJA || class_ == JOB_GUNSLINGER)) base_hp += 90;
+#endif
 	for (i = 2; i <= level; i++)
-		base_hp += floor(((job_info[class_idx].hp_factor/100.) * i) + 0.5); //Don't have round()
+		base_hp += floor(((job_info[idx].hp_factor/100.) * i) + 0.5); //Don't have round()
 	return (unsigned int)base_hp;
+}
+
+/** [Playtester]
+* Calculates base sp of player.
+* @param level Base level of player
+* @param class_ Job ID @see enum e_job
+* @return base_sp
+*/
+static unsigned int pc_calc_basesp(uint16 level, uint16 class_) {
+	double base_sp;
+	uint16 idx = pc_class2idx(class_);
+
+	base_sp = 10 + floor(level * (job_info[idx].sp_factor / 100.));
+
+	switch (class_) {
+		case JOB_NINJA:
+			if (level >= 10)
+				base_sp -= 22;
+			else
+				base_sp = 11 + 3*level;
+			break;
+		case JOB_GUNSLINGER:
+			if (level > 10)
+				base_sp -= 18;
+			else
+				base_sp = 9 + 3*level;
+			break;
+	}
+
+	return (unsigned int)base_sp;
 }
 
 //Reading job_db1.txt line, (class,weight,HPFactor,HPMultiplicator,SPFactor,aspd/lvl...)
@@ -10658,7 +10690,7 @@ static bool pc_readdb_job_basehpsp(char* fields[], int columns, int current)
 					job_info[idx].base_hp[lvl_idx] = atoi(fields[j+4]);
 					//Tells if this HP is lower than previous level
 					if (lvl_idx-1 >= 0 && job_info[idx].base_hp[lvl_idx] < job_info[idx].base_hp[lvl_idx-1])
-						ShowWarning("pc_readdb_job_basehpsp: HP value at line %d col %d is lower than previous level (job=%d,lvl=%d,oldval=%d,val=%d).\n",
+						ShowInfo("pc_readdb_job_basehpsp: HP value at entry %d col %d is lower than previous level (job=%d,lvl=%d,oldval=%d,val=%d).\n",
 							current,j+4,job_id,lvl_idx+1,job_info[idx].base_hp[lvl_idx-1],job_info[idx].base_hp[lvl_idx]);
 				}
 			}
@@ -10671,7 +10703,7 @@ static bool pc_readdb_job_basehpsp(char* fields[], int columns, int current)
 					job_info[idx].base_sp[lvl_idx] = atoi(fields[j+4]);
 					//Tells if this SP is lower than previous level
 					if (lvl_idx-1 >= 0 && job_info[idx].base_sp[lvl_idx] < job_info[idx].base_sp[lvl_idx-1])
-						ShowWarning("pc_readdb_job_basehpsp: SP value at line %d col %d is lower than previous level (job=%d,lvl=%d,oldval=%d,val=%d).\n",
+						ShowInfo("pc_readdb_job_basehpsp: SP value at entry %d col %d is lower than previous level (job=%d,lvl=%d,oldval=%d,val=%d).\n",
 							current,j+4,job_id,lvl_idx+1,job_info[idx].base_sp[lvl_idx-1],job_info[idx].base_sp[lvl_idx]);
 				}
 			}
@@ -10836,7 +10868,8 @@ void pc_readdb(void) {
 	for (i = 0; i < JOB_MAX; i++) {
 		int idx;
 		uint16 j;
-		if (!pcdb_checkid(i)) continue;
+		if (!pcdb_checkid(i))
+			continue;
 		if (i == JOB_WEDDING || i == JOB_XMAS || i == JOB_SUMMER || i == JOB_HANBOK || i == JOB_OKTOBERFEST)
 			continue; //Classes that do not need exp tables.
 		idx = pc_class2idx(i);
@@ -10848,9 +10881,9 @@ void pc_readdb(void) {
 		//Init and checking the empty value of Base HP/SP [Cydh]
 		for (j = 0; j < (job_info[idx].max_level[0] ? job_info[idx].max_level[0] : MAX_LEVEL); j++) {
 			if (job_info[idx].base_hp[j] == 0)
-				job_info[idx].base_hp[j] = pc_calc_basehp(j+1,idx);
+				job_info[idx].base_hp[j] = pc_calc_basehp(j+1,i);
 			if (job_info[idx].base_sp[j] == 0)
-				job_info[idx].base_sp[j] = 10 + (unsigned int)floor((j+1) * (job_info[idx].sp_factor / 100.));
+				job_info[idx].base_sp[j] = pc_calc_basesp(j+1,i);
 		}
 	}
 }

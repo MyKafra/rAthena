@@ -2698,8 +2698,10 @@ static int status_get_hpbonus(struct block_list *bl, enum e_status_bonus type) {
 			bonus += sd->bonus.hp;
 			if ((i = pc_checkskill(sd,CR_TRUST)) > 0)
 				bonus += i * 200;
-			if (sd->class_&JOBL_SUPER_NOVICE && sd->status.base_level >= 99)
+#ifndef HP_SP_TABLES
+			if ((sd->class_&MAPID_UPPERMASK) == MAPID_SUPER_NOVICE && sd->status.base_level >= 99)
 				bonus += 2000; // Supernovice lvl99 hp bonus.
+#endif
 		}
 
 		//Bonus by SC
@@ -3337,7 +3339,7 @@ int status_calc_pc_(struct map_session_data* sd, enum e_status_calc_opt opt)
 	}
 
 	// If a Super Novice has never died and is at least joblv 70, he gets all stats +10
-	if((sd->class_&JOBL_SUPER_NOVICE && (sd->status.job_level >= 70  || sd->class_&JOBL_THIRD)) && sd->die_counter == 0) {
+	if(((sd->class_&MAPID_UPPERMASK) == MAPID_SUPER_NOVICE && (sd->status.job_level >= 70  || sd->class_&JOBL_THIRD)) && sd->die_counter == 0) {
 		status->str += 10;
 		status->agi += 10;
 		status->vit += 10;
@@ -7468,9 +7470,6 @@ int status_get_sc_def(struct block_list *src, struct block_list *bl, enum sc_typ
 		case SC_VACUUM_EXTREME:
 			tick_def2 = b_status->str*50;
 			break;
-		case SC_MANDRAGORA:
-			sc_def = (status->vit + status->luk)*20;
-			break;
 		case SC_KYOUGAKU:
 			tick_def2 = 30*status->int_;
 			break;
@@ -7822,7 +7821,7 @@ int status_change_start(struct block_list* src, struct block_list* bl,enum sc_ty
 	break;
 
 	case SC_ALL_RIDING:
-		if( !sd || !&sd->sc || sc->option&(OPTION_RIDING|OPTION_DRAGON|OPTION_WUG|OPTION_MADOGEAR) )
+		if( !sd || !&sd->sc || sc->option&(OPTION_RIDING|OPTION_DRAGON|OPTION_WUGRIDER|OPTION_MADOGEAR) )
 			return 0;
 		if( sc->data[type] )
 		{	// Already mounted, just dismount.
@@ -12323,7 +12322,7 @@ int status_change_timer(int tid, unsigned int tick, int id, intptr_t data)
 		return 0;
 	case SC_MEIKYOUSISUI:
 		if( --(sce->val4) >= 0 ) {
-			status_heal(bl, status->max_hp * sce->val2 / 100, sce->val3 / 100, 0);
+			status_heal(bl, status->max_hp * sce->val2 / 100, status->max_sp * sce->val3 / 100, 0);
 			sc_timer_next(1000 + tick, status_change_timer, bl->id, data);
 			return 0;
 		}
