@@ -10001,6 +10001,11 @@ void clif_parse_LoadEndAck(int fd,struct map_session_data *sd)
 		// Instances do not need their own channels
 		if( channel_config.map_enable && channel_config.map_autojoin && !map[sd->bl.m].flag.chmautojoin && !map[sd->bl.m].instance_id )
 			channel_mjoin(sd); //join new map
+
+		if (sd->sc.data[SC_EXPLOSIONSPIRITS]) {
+			status_change_end(&sd->bl, SC_EXPLOSIONSPIRITS, INVALID_TIMER);
+		}
+
 	} else if (sd->guild && (battle_config.guild_notice_changemap == 2 || guild_notice))
 		clif_guild_notice(sd, sd->guild); // Displays at end
 
