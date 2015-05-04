@@ -961,7 +961,7 @@ int skill_additional_effect(struct block_list* src, struct block_list *bl, uint1
 					break; // If a normal attack is a skill, it's splash damage. [Inkfish]
 				if(sd) {
 					// Automatic trigger of Blitz Beat
-					if (pc_isfalcon(sd) && sd->status.weapon == W_BOW && (skill=pc_checkskill(sd,HT_BLITZBEAT))>0 &&
+					if (pc_isfalcon(sd) && (skill=pc_checkskill(sd,HT_BLITZBEAT))>0 &&
 						rnd()%1000 <= sstatus->luk*10/3+1 ) {
 						rate=(sd->status.job_level+9)/10;
 						skill_castend_damage_id(src,bl,HT_BLITZBEAT,(skill<rate)?skill:rate,tick,SD_LEVEL);
