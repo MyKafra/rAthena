@@ -4375,6 +4375,15 @@ int skill_castend_damage_id (struct block_list* src, struct block_list *bl, uint
 
 			skill_attack(BF_WEAPON,src,src,bl,skill_id,skill_lv,tick,flag);
 			if (skill_id == MO_EXTREMITYFIST) {
+				if (src->type == BC_PC && battle_config.asura_strike_canbreakable) {
+					struct map_session_data *sd = (TBL_PC*)src;
+
+					if (!sd->sc.data[SC_EXPLOSIONSPIRITS] || sd->spiritball != 5) {
+						clif_skill_fail(sd, skill_id, USESKILL_FAIL_LEVEL, 0);
+						break;
+					}
+				}
+
 				status_set_sp(src, 0, 0);
 				status_change_end(src, SC_EXPLOSIONSPIRITS, INVALID_TIMER);
 				status_change_end(src, SC_BLADESTOP, INVALID_TIMER);
