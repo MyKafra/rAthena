@@ -4417,6 +4417,8 @@ int skill_castend_damage_id (struct block_list* src, struct block_list *bl, uint
 				clif_blown(src);
 				clif_spiritball(src);
 			}
+
+			skill_attack(BF_WEAPON, src, src, bl, skill_id, skill_lv, tick, flag);
 		}
 		break;
 
