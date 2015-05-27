@@ -16425,7 +16425,7 @@ static void clif_parse_ReqOpenBuyingStore(int fd, struct map_session_data* sd)
 		return;
 	}
 
-	zenylimit = RFIFOL(fd,info->pos[1]);
+	zenylimit = RFIFOW(fd,info->pos[1]);
 	result    = RFIFOL(fd,info->pos[2]);
 	safestrncpy(storename, (const char*)RFIFOP(fd,info->pos[3]), sizeof(storename));
 	itemlist  = RFIFOP(fd,info->pos[4]);
@@ -16470,18 +16470,18 @@ void clif_buyingstore_myitemlist(struct map_session_data* sd)
 	int fd = sd->fd;
 	unsigned int i;
 
-	WFIFOHEAD(fd,10+sd->buyingstore.slots*9);
+	WFIFOHEAD(fd,12+sd->buyingstore.slots*9);
 	WFIFOW(fd,0) = 0x813;
 	WFIFOW(fd,2) = 12+sd->buyingstore.slots*9;
 	WFIFOL(fd,4) = sd->bl.id;
-	WFIFOW(fd,8) = sd->buyingstore.zenylimit;
+	WFIFOL(fd,8) = sd->buyingstore.zenylimit;
 
 	for( i = 0; i < sd->buyingstore.slots; i++ )
 	{
-		WFIFOL(fd,10+i*9) = sd->buyingstore.items[i].price;
-		WFIFOW(fd,14+i*9) = sd->buyingstore.items[i].amount;
-		WFIFOB(fd,16+i*9) = itemtype(sd->buyingstore.items[i].nameid);
-		WFIFOW(fd,17+i*9) = sd->buyingstore.items[i].nameid;
+		WFIFOL(fd,12+i*9) = sd->buyingstore.items[i].price;
+		WFIFOW(fd,16+i*9) = sd->buyingstore.items[i].amount;
+		WFIFOB(fd,18+i*9) = itemtype(sd->buyingstore.items[i].nameid);
+		WFIFOW(fd,19+i*9) = sd->buyingstore.items[i].nameid;
 	}
 
 	WFIFOSET(fd,WFIFOW(fd,2));
@@ -16561,7 +16561,7 @@ void clif_buyingstore_itemlist(struct map_session_data* sd, struct map_session_d
 	int fd = sd->fd;
 	unsigned int i;
 
-	WFIFOHEAD(fd,14+pl_sd->buyingstore.slots*9);
+	WFIFOHEAD(fd,16+pl_sd->buyingstore.slots*9);
 	WFIFOW(fd,0) = 0x818;
 	WFIFOW(fd,2) = 16+pl_sd->buyingstore.slots*9;
 	WFIFOL(fd,4) = pl_sd->bl.id;
@@ -16570,10 +16570,10 @@ void clif_buyingstore_itemlist(struct map_session_data* sd, struct map_session_d
 
 	for( i = 0; i < pl_sd->buyingstore.slots; i++ )
 	{
-		WFIFOL(fd,14+i*9) = pl_sd->buyingstore.items[i].price;
-		WFIFOW(fd,28+i*9) = pl_sd->buyingstore.items[i].amount;  // TODO: Figure out, if no longer needed items (amount == 0) are listed on official.
-		WFIFOB(fd,20+i*9) = itemtype(pl_sd->buyingstore.items[i].nameid);
-		WFIFOW(fd,21+i*9) = pl_sd->buyingstore.items[i].nameid;
+		WFIFOL(fd,16+i*9) = pl_sd->buyingstore.items[i].price;
+		WFIFOW(fd,20+i*9) = pl_sd->buyingstore.items[i].amount;  // TODO: Figure out, if no longer needed items (amount == 0) are listed on official.
+		WFIFOB(fd,22+i*9) = itemtype(pl_sd->buyingstore.items[i].nameid);
+		WFIFOW(fd,23+i*9) = pl_sd->buyingstore.items[i].nameid;
 	}
 
 	WFIFOSET(fd,WFIFOW(fd,2));
