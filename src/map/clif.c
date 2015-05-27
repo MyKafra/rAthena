@@ -16425,7 +16425,7 @@ static void clif_parse_ReqOpenBuyingStore(int fd, struct map_session_data* sd)
 		return;
 	}
 
-	zenylimit = RFIFOL(fd,info->pos[1]);
+	zenylimit = RFIFOW(fd,info->pos[1]);
 	result    = RFIFOL(fd,info->pos[2]);
 	safestrncpy(storename, (const char*)RFIFOP(fd,info->pos[3]), sizeof(storename));
 	itemlist  = RFIFOP(fd,info->pos[4]);
