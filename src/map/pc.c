@@ -6736,11 +6736,17 @@ void pc_skillup(struct map_session_data *sd,uint16 skill_id)
 			int lv, range, upgradable;
 
 			if (sd->class_&JOBL_2 && (sd->class_&MAPID_UPPERMASK) != MAPID_SUPER_NOVICE) {
-				int skill_point = pc_calc_skillpoint(sd) - 1;
+				int i;
+				int skill_point = pc_calc_skillpoint(sd);
 				int change_lv = pc_readglobalreg(sd, "jobchange_level");
+				int b_class = sd->class_&MAPID_BASEMASK;
+				b_class = pc_mapid2jobid(b_class, sd->status.sex);
+				b_class = pc_class2idx(b_class);
 
-				if (skill_point < change_lv)
+				ARR_FIND(0, MAX_SKILL_TREE, i, skill_tree[b_class][i].id == skill_id);
+				if (i > MAX_SKILL_TREE && skill_point < change_lv) {
 					return;
+				}
 			}
 
 			sd->status.skill[idx].lv++;
