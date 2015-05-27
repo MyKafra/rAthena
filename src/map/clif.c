@@ -16566,7 +16566,7 @@ void clif_buyingstore_itemlist(struct map_session_data* sd, struct map_session_d
 	WFIFOW(fd,2) = 16+pl_sd->buyingstore.slots*9;
 	WFIFOL(fd,4) = pl_sd->bl.id;
 	WFIFOL(fd,8) = pl_sd->buyer_id;
-	WFIFOL(fd,12) = pl_sd->buyingstore.zenylimit;
+	WFIFOW(fd,12) = pl_sd->buyingstore.zenylimit;
 
 	for( i = 0; i < pl_sd->buyingstore.slots; i++ )
 	{
