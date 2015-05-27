@@ -4373,7 +4373,6 @@ int skill_castend_damage_id (struct block_list* src, struct block_list *bl, uint
 			short x, y, i = 2; // Move 2 cells (From target)
 			short dir = map_calc_dir(src,bl->x,bl->y);
 
-			skill_attack(BF_WEAPON,src,src,bl,skill_id,skill_lv,tick,flag);
 			if (skill_id == MO_EXTREMITYFIST) {
 				if (src->type == BC_PC && battle_config.asura_strike_canbreakable) {
 					struct map_session_data *sd = (TBL_PC*)src;
