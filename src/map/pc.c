@@ -6734,6 +6734,15 @@ void pc_skillup(struct map_session_data *sd,uint16 skill_id)
 			sd->status.skill[idx].lv < skill_tree_get_max(skill_id, sd->status.class_) )
 		{
 			int lv, range, upgradable;
+
+			if (sd->class_&JOBL_2 && (sd->class_&MAPID_UPPERMASK) != MAPID_SUPER_NOVICE) {
+				int skill_point = pc_calc_skillpoint(sd) - 1;
+				int change_lv = pc_readglobalreg(sd, "jobchange_level");
+
+				if (skill_point < change_lv)
+					return;
+			}
+
 			sd->status.skill[idx].lv++;
 			sd->status.skill_point--;
 			if( !skill_get_inf(skill_id) )

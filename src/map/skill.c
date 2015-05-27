@@ -4418,12 +4418,6 @@ int skill_castend_damage_id (struct block_list* src, struct block_list *bl, uint
 				clif_blown(src);
 				clif_spiritball(src);
 			}
-
-			if (battle_config.asura_strike_canbreakable) {
-				dir = map_calc_dir(src, bl->x, bl->y);
-				if (dir > 4)
-					clif_skill_fail(sd, skill_id, USESKILL_FAIL_LEVEL, 0);
-			}
 		}
 		break;
 
