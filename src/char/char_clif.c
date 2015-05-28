@@ -565,6 +565,7 @@ int chclif_parse_maplogin(int fd){
 			map_server[i].ip = ntohl(RFIFOL(fd,54));
 			map_server[i].port = ntohs(RFIFOW(fd,58));
 			map_server[i].users = 0;
+			map_server[i].fake_users = 0;
 			memset(map_server[i].map, 0, sizeof(map_server[i].map));
 			session[fd]->func_parse = chmapif_parse;
 			session[fd]->flag.server = 1;

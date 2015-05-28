@@ -1633,6 +1633,7 @@ int char_count_users(void)
 	for(i = 0; i < ARRAYLENGTH(map_server); i++) {
 		if (map_server[i].fd > 0) {
 			users += map_server[i].users;
+			users += map_server[i].fake_users;
 		}
 	}
 	return users;

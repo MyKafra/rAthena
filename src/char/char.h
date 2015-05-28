@@ -147,7 +147,7 @@ struct mmo_map_server {
 	int fd;
 	uint32 ip;
 	uint16 port;
-	int users;
+	int users, fake_users;
 	unsigned short map[MAX_MAP_PER_SERVER];
 };
 extern struct mmo_map_server map_server[MAX_MAP_SERVERS];

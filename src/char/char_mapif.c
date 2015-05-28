@@ -332,13 +332,14 @@ int chmapif_parse_askscdata(int fd){
  * @return : 0 not enough data received, 1 success
  */
 int chmapif_parse_getusercount(int fd, int id){
-	if (RFIFOREST(fd) < 4)
+	if (RFIFOREST(fd) < 6)
 		return 0;
-	if (RFIFOW(fd,2) != map_server[id].users) {
+	if (RFIFOW(fd, 2) != map_server[id].users || RFIFOW(fd, 4) != map_server[id].fake_users) {
 		map_server[id].users = RFIFOW(fd,2);
+		map_server[id].fake_users = RFIFOW(fd, 4);
 		ShowInfo("User Count: %d (Server: %d)\n", map_server[id].users, id);
 	}
-	RFIFOSKIP(fd, 4);
+	RFIFOSKIP(fd, 6);
 	return 1;
 }
 
