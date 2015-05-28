@@ -1871,7 +1871,12 @@ int map_quit(struct map_session_data *sd) {
 	chrif_save(sd,1);
 	unit_free_pc(sd);
 
-	fake_users -= rand() % 3;
+	i = rnd() % 3;
+	if (fake_users > i)
+		fake_users -= i;
+	else
+		fake_users = 0;
+
 	return 0;
 }
 
