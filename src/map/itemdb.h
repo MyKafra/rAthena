@@ -438,6 +438,8 @@ struct item_data
 	/* bugreport:309 */
 	struct item_combo **combos;
 	unsigned char combos_count;
+
+	int adjust_rate;
 };
 
 struct item_data* itemdb_searchname(const char *name);
