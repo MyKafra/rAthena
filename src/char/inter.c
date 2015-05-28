@@ -43,6 +43,9 @@ char default_codepage[32] = ""; //Feature by irmin.
 static struct accreg *accreg_pt;
 unsigned int party_share_level = 10;
 
+unsigned int guild_max_member_begin = 16;
+unsigned int guild_extension_member_rate = 6;
+
 // recv. packet list
 int inter_recv_packet_length[] = {
 	-1,-1, 7,-1, -1,13,36, (2+4+4+4+1+NAME_LENGTH),  0, 0, 0, 0,  0, 0,  0, 0,	// 3000-
@@ -669,6 +672,10 @@ static int inter_config_read(const char* cfgName)
 			charserv_config.log_inter = atoi(w2);
 		else if(!strcmpi(w1,"import"))
 			inter_config_read(w2);
+		else if (!strcmpi(w1, "guild_max_member_begin"))
+			guild_max_member_begin = (unsigned int)atof(w2);
+		else if (!strcmpi(w1, "guild_extension_member_rate"))
+			guild_extension_member_rate = (unsigned int)atof(w2);
 	}
 	fclose(fp);
 

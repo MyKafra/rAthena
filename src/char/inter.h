@@ -22,6 +22,8 @@ int inter_log(char *fmt,...);
 #define inter_cfgName "conf/inter_athena.conf"
 
 extern unsigned int party_share_level;
+extern unsigned int	guild_max_member_begin;
+extern unsigned int	guild_extension_member_rate;
 
 extern Sql* sql_handle;
 extern Sql* lsql_handle;
