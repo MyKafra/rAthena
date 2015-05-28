@@ -8016,7 +8016,8 @@ static const struct _battle_data {
 	{ "homunculus_evo_intimacy_reset",      &battle_config.homunculus_evo_intimacy_reset,   1000,   0,      INT_MAX,        },
 	{ "monster_loot_search_type",           &battle_config.monster_loot_search_type,        1,      0,      1,              },
 
-	{ "asura_strike_canbreakable",			&battle_config.asura_strike_canbreakable,		0,		0,		1,				},	
+	{ "asura_strike_canbreakable",			&battle_config.asura_strike_canbreakable,		0,		0,		1,				},
+	{ "share_trickdead_player",				&battle_config.share_trickdead_player,			1,		0,		1,				},
 };
 
 #ifndef STATS_OPT_OUT

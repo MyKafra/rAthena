@@ -591,6 +591,7 @@ extern struct Battle_Config
 	int monster_loot_search_type;
 
 	int asura_strike_canbreakable;
+	int share_trickdead_player;
 } battle_config;
 
 void do_init_battle(void);
