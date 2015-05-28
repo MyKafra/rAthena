@@ -670,12 +670,12 @@ static int inter_config_read(const char* cfgName)
 			party_share_level = (unsigned int)atof(w2);
 		else if(!strcmpi(w1,"log_inter"))
 			charserv_config.log_inter = atoi(w2);
-		else if(!strcmpi(w1,"import"))
-			inter_config_read(w2);
 		else if (!strcmpi(w1, "guild_max_member_begin"))
 			guild_max_member_begin = (unsigned int)atof(w2);
-		else if (!strcmpi(w1, "guild_extension_member_rate"))
+		else if (!strcmpi(w1, "guild_extension_rate"))
 			guild_extension_member_rate = (unsigned int)atof(w2);
+		else if(!strcmpi(w1,"import"))
+			inter_config_read(w2);
 	}
 	fclose(fp);
 
