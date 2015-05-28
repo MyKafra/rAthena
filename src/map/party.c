@@ -1028,7 +1028,7 @@ int party_exp_share(struct party_data* p, struct block_list* src, unsigned int b
 
 	// count the number of players eligible for exp sharing
 	for (i = c = 0; i < MAX_PARTY; i++) {
-		if( (sd[c] = p->data[i].sd) == NULL || sd[c]->bl.m != src->m || pc_isdead(sd[c]) || (battle_config.idle_no_share && pc_isidle(sd[c])) )
+		if( (sd[c] = p->data[i].sd) == NULL || sd[c]->bl.m != src->m || pc_isdead(sd[c]) || (battle_config.idle_no_share && pc_isidle(sd[c]) || sd[c]->sc.data[SC_TRICKDEAD] ) )
 			continue;
 		c++;
 	}
