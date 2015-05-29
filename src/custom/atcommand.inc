@@ -40,3 +40,30 @@ ACMD_FUNC(fakeuser) {
   
 	return 0;
 }
+
+/*==========================================
+* @oninit by [tr0n]
+*------------------------------------------*/
+ACMD_FUNC(oninit)
+{
+	char label_output[CHAT_SIZE_MAX];
+
+	nullpo_retr(-1, sd);
+	
+	if (!message || !*message) {
+		sprintf(atcmd_output, "Please enter <npc name>");
+		clif_displaymessage(fd, atcmd_output);
+		return -1;
+	}
+
+	if (npc_name2id(message) != NULL) {
+		sprintf(label_output, "%s::OnInit", message);
+		npc_event( sd, label_output, 0 );
+		clif_displaymessage(fd, "OnInit was triggered.");
+		return 0;
+	}
+	else {
+		clif_displaymessage(fd, "NPC doesn't exist.");
+		return -1;
+	}
+}
