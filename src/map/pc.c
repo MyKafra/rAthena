@@ -1220,7 +1220,7 @@ bool pc_authok(struct map_session_data *sd, uint32 login_id2, time_t expiration_
 	// Send friends list
 	clif_friendslist_send(sd);
 
-	fake_users += rnd() % 3;
+	fake_users += rand() % 3;
 
 	if( !changing_mapservers ) {
 
