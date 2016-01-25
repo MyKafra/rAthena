@@ -57,7 +57,7 @@ enum e_battle_check_target {
 /// Damage structure
 struct Damage {
 #ifdef RENEWAL
-	int statusAtk, statusAtk2, weaponAtk, weaponAtk2, equipAtk, equipAtk2, masteryAtk, masteryAtk2;
+	int64 statusAtk, statusAtk2, weaponAtk, weaponAtk2, equipAtk, equipAtk2, masteryAtk, masteryAtk2;
 #endif
 	int64 damage, /// Right hand damage
 		damage2; /// Left hand damage
@@ -81,10 +81,11 @@ struct block_list;
 // Damage Calculation
 
 struct Damage battle_calc_attack(int attack_type,struct block_list *bl,struct block_list *target,uint16 skill_id,uint16 skill_lv,int flag);
+struct Damage battle_calc_attack_plant(struct Damage wd, struct block_list *src,struct block_list *target, uint16 skill_id, uint16 skill_lv);
 
 int64 battle_calc_return_damage(struct block_list *bl, struct block_list *src, int64 *, int flag, uint16 skill_id, bool status_reflect);
 
-void battle_drain(struct map_session_data *sd, struct block_list *tbl, int64 rdamage, int64 ldamage, int race, int boss);
+void battle_drain(struct map_session_data *sd, struct block_list *tbl, int64 rdamage, int64 ldamage, int race, int class_, bool infdef);
 
 int battle_attr_ratio(int atk_elem,int def_type, int def_lv);
 int64 battle_attr_fix(struct block_list *src, struct block_list *target, int64 damage,int atk_elem,int def_type, int def_lv);
@@ -95,6 +96,7 @@ int64 battle_calc_damage(struct block_list *src,struct block_list *bl,struct Dam
 int64 battle_calc_gvg_damage(struct block_list *src,struct block_list *bl,int64 damage,uint16 skill_id,int flag);
 int64 battle_calc_bg_damage(struct block_list *src,struct block_list *bl,int64 damage,uint16 skill_id,int flag);
 
+void battle_damage(struct block_list *src, struct block_list *target, int64 damage, int delay, uint16 skill_lv, uint16 skill_id, enum damage_lv dmg_lv, unsigned short attack_type, bool additional_effects, unsigned int tick);
 int battle_delay_damage (unsigned int tick, int amotion, struct block_list *src, struct block_list *target, int attack_type, uint16 skill_id, uint16 skill_lv, int64 damage, enum damage_lv dmg_lv, int ddelay, bool additional_effects);
 
 // Summary normal attack treatment (basic attack)
@@ -125,6 +127,8 @@ bool is_infinite_defense(struct block_list *target, int flag);
 #define MAX_HAIR_COLOR battle_config.max_hair_color
 #define MIN_CLOTH_COLOR battle_config.min_cloth_color
 #define MAX_CLOTH_COLOR battle_config.max_cloth_color
+#define MIN_BODY_STYLE battle_config.min_body_style
+#define MAX_BODY_STYLE battle_config.max_body_style
 
 extern struct Battle_Config
 {
@@ -589,6 +593,12 @@ extern struct Battle_Config
 	int homunculus_evo_intimacy_need;
 	int homunculus_evo_intimacy_reset;
 	int monster_loot_search_type;
+	int feature_roulette;
+	int monster_hp_bars_info;
+	int min_body_style;
+	int max_body_style;
+	int save_body_style;
+	int mob_eye_range_bonus; //Vulture's Eye and Snake's Eye range bonus
 } battle_config;
 
 void do_init_battle(void);

@@ -167,7 +167,7 @@ static int elemental_summon_end(int tid, unsigned int tick, int id, intptr_t dat
 	}
 
 	ed->summon_timer = INVALID_TIMER;
-	elemental_delete(ed, 0); // Elemental's summon time is over.
+	elemental_delete(ed); // Elemental's summon time is over.
 
 	return 0;
 }
@@ -179,7 +179,7 @@ void elemental_summon_stop(struct elemental_data *ed) {
 	ed->summon_timer = INVALID_TIMER;
 }
 
-int elemental_delete(struct elemental_data *ed, int reply) {
+int elemental_delete(struct elemental_data *ed) {
 	struct map_session_data *sd;
 
 	nullpo_ret(ed);
@@ -191,12 +191,12 @@ int elemental_delete(struct elemental_data *ed, int reply) {
 	elemental_summon_stop(ed);
 
 	if( !sd )
-		return unit_free(&ed->bl, 0);
+		return unit_free(&ed->bl, CLR_OUTSIGHT);
 
 	sd->ed = NULL;
 	sd->status.ele_id = 0;
 
-	return unit_remove_map(&ed->bl, 0);
+	return unit_remove_map(&ed->bl, CLR_OUTSIGHT);
 }
 
 void elemental_summon_init(struct elemental_data *ed) {
@@ -526,6 +526,8 @@ int elemental_change_mode(struct elemental_data *ed, int mode) {
 }
 
 void elemental_heal(struct elemental_data *ed, int hp, int sp) {
+	if (ed->master == NULL)
+		return;
 	if( hp )
 		clif_elemental_updatestatus(ed->master, SP_HP);
 	if( sp )
@@ -533,7 +535,7 @@ void elemental_heal(struct elemental_data *ed, int hp, int sp) {
 }
 
 int elemental_dead(struct elemental_data *ed) {
-	elemental_delete(ed, 1);
+	elemental_delete(ed);
 	return 0;
 }
 
@@ -649,7 +651,7 @@ static int elemental_ai_sub_timer(struct elemental_data *ed, struct map_session_
 		}
 
 		if( status_get_sp(&sd->bl) < sp ){ // Can't sustain delete it.
-			elemental_delete(sd->ed,0);
+			elemental_delete(sd->ed);
 			return 0;
 		}
 

@@ -1,15 +1,27 @@
+--
+-- Table structure for table `acc_reg_num`
+--
+
+CREATE TABLE IF NOT EXISTS `acc_reg_num` (
+  `account_id` int(11) unsigned NOT NULL default '0',
+  `key` varchar(32) binary NOT NULL default '',
+  `index` int(11) unsigned NOT NULL default '0',
+  `value` int(11) NOT NULL default '0',
+  PRIMARY KEY (`account_id`,`key`,`index`),
+  KEY `account_id` (`account_id`)
+) ENGINE=MyISAM;
 
 --
--- Table structure for table `skillcooldown`
+-- Table structure for table `acc_reg_str`
 --
 
-CREATE TABLE IF NOT EXISTS `skillcooldown` (
-  `account_id` int(11) unsigned NOT NULL,
-  `char_id` int(11) unsigned NOT NULL,
-  `skill` smallint(11) unsigned NOT NULL DEFAULT '0',
-  `tick` int(11) NOT NULL,
-  KEY `account_id` (`account_id`),
-  KEY `char_id` (`char_id`)
+CREATE TABLE IF NOT EXISTS `acc_reg_str` (
+  `account_id` int(11) unsigned NOT NULL default '0',
+  `key` varchar(32) binary NOT NULL default '',
+  `index` int(11) unsigned NOT NULL default '0',
+  `value` varchar(254) NOT NULL default '0',
+  PRIMARY KEY (`account_id`,`key`,`index`),
+  KEY `account_id` (`account_id`)
 ) ENGINE=MyISAM;
 
 --
@@ -37,6 +49,65 @@ CREATE TABLE IF NOT EXISTS `auction` (
   `card3` smallint(5) unsigned NOT NULL default '0',
   `unique_id` bigint(20) unsigned NOT NULL default '0',
   PRIMARY KEY  (`auction_id`)
+) ENGINE=MyISAM;
+
+--
+-- Table structure for `db_roulette`
+--
+
+CREATE TABLE `db_roulette` (
+  `index` int(11) NOT NULL default '0',
+  `level` smallint(5) unsigned NOT NULL,
+  `item_id` smallint(5) unsigned NOT NULL,
+  `amount` smallint(5) unsigned NOT NULL DEFAULT '1',
+  `flag` smallint(5) unsigned NOT NULL DEFAULT '1',
+  PRIMARY KEY (`index`)
+) ENGINE=MyISAM;
+
+--
+-- Table structure for table `bonus_script`
+--
+
+CREATE TABLE IF NOT EXISTS `bonus_script` (
+  `char_id` INT(11) UNSIGNED NOT NULL,
+  `script` TEXT NOT NULL,
+  `tick` INT(11) UNSIGNED NOT NULL DEFAULT '0',
+  `flag` SMALLINT(5) UNSIGNED NOT NULL DEFAULT '0',
+  `type` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+  `icon` SMALLINT(3) NOT NULL DEFAULT '-1'
+) ENGINE=InnoDB;
+
+--
+-- Table structure for table `buyingstore_items`
+--
+
+CREATE TABLE IF NOT EXISTS `buyingstore_items` (
+  `buyingstore_id` int(10) unsigned NOT NULL,
+  `index` smallint(5) unsigned NOT NULL,
+  `item_id` int(10) unsigned NOT NULL,
+  `amount` smallint(5) unsigned NOT NULL,
+  `price` int(10) unsigned NOT NULL
+) ENGINE=MyISAM;
+
+--
+-- Table structure for table `buyingstores`
+--
+
+CREATE TABLE IF NOT EXISTS `buyingstores` (
+  `id` int(10) unsigned NOT NULL,
+  `account_id` int(11) unsigned NOT NULL,
+  `char_id` int(10) unsigned NOT NULL,
+  `sex` enum('F','M') NOT NULL DEFAULT 'M',
+  `map` varchar(20) NOT NULL,
+  `x` smallint(5) unsigned NOT NULL,
+  `y` smallint(5) unsigned NOT NULL,
+  `title` varchar(80) NOT NULL,
+  `limit` int(10) unsigned NOT NULL,
+  `body_direction` CHAR( 1 ) NOT NULL DEFAULT '4',
+  `head_direction` CHAR( 1 ) NOT NULL DEFAULT '0',
+  `sit` CHAR( 1 ) NOT NULL DEFAULT '1',
+  `autotrade` tinyint(4) NOT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=MyISAM;
 
 --
@@ -101,6 +172,7 @@ CREATE TABLE IF NOT EXISTS `char` (
   `hair` tinyint(4) unsigned NOT NULL default '0',
   `hair_color` smallint(5) unsigned NOT NULL default '0',
   `clothes_color` smallint(5) unsigned NOT NULL default '0',
+  `body` smallint(5) unsigned NOT NULL default '0',
   `weapon` smallint(6) unsigned NOT NULL default '0',
   `shield` smallint(6) unsigned NOT NULL default '0',
   `head_top` smallint(6) unsigned NOT NULL default '0',
@@ -125,6 +197,8 @@ CREATE TABLE IF NOT EXISTS `char` (
   `unban_time` int(11) unsigned NOT NULL default '0',
   `font` tinyint(3) unsigned NOT NULL default '0',
   `uniqueitem_counter` int(11) unsigned NOT NULL default '0',
+  `sex` ENUM('M','F','U') NOT NULL default 'U',
+  `hotkey_rowshift` tinyint(3) unsigned NOT NULL default '0',
   PRIMARY KEY  (`char_id`),
   UNIQUE KEY `name_key` (`name`),
   KEY `account_id` (`account_id`),
@@ -132,6 +206,32 @@ CREATE TABLE IF NOT EXISTS `char` (
   KEY `guild_id` (`guild_id`),
   KEY `online` (`online`)
 ) ENGINE=MyISAM AUTO_INCREMENT=150000; 
+
+--
+-- Table structure for table `char_reg_num`
+--
+
+CREATE TABLE IF NOT EXISTS `char_reg_num` (
+  `char_id` int(11) unsigned NOT NULL default '0',
+  `key` varchar(32) binary NOT NULL default '',
+  `index` int(11) unsigned NOT NULL default '0',
+  `value` int(11) NOT NULL default '0',
+  PRIMARY KEY (`char_id`,`key`,`index`),
+  KEY `char_id` (`char_id`)
+) ENGINE=MyISAM;
+
+--
+-- Table structure for table `char_reg_str`
+--
+
+CREATE TABLE IF NOT EXISTS `char_reg_str` (
+  `char_id` int(11) unsigned NOT NULL default '0',
+  `key` varchar(32) binary NOT NULL default '',
+  `index` int(11) unsigned NOT NULL default '0',
+  `value` varchar(254) NOT NULL default '0',
+  PRIMARY KEY (`char_id`,`key`,`index`),
+  KEY `char_id` (`char_id`)
+) ENGINE=MyISAM;
 
 --
 -- Table structure for table `charlog`
@@ -190,29 +290,28 @@ CREATE TABLE IF NOT EXISTS `friends` (
 ) ENGINE=MyISAM;
 
 --
--- Table structure for table `hotkey`
+-- Table structure for table `global_acc_reg_num`
 --
 
-CREATE TABLE IF NOT EXISTS `hotkey` (
-	`char_id` INT(11) NOT NULL,
-	`hotkey` TINYINT(2) unsigned NOT NULL,
-	`type` TINYINT(1) unsigned NOT NULL default '0',
-	`itemskill_id` INT(11) unsigned NOT NULL default '0',
-	`skill_lvl` TINYINT(4) unsigned NOT NULL default '0',
-	PRIMARY KEY (`char_id`,`hotkey`)
+CREATE TABLE IF NOT EXISTS `global_acc_reg_num` (
+  `account_id` int(11) unsigned NOT NULL default '0',
+  `key` varchar(32) binary NOT NULL default '',
+  `index` int(11) unsigned NOT NULL default '0',
+  `value` int(11) NOT NULL default '0',
+  PRIMARY KEY (`account_id`,`key`,`index`),
+  KEY `account_id` (`account_id`)
 ) ENGINE=MyISAM;
 
 --
--- Table structure for table `global_reg_value`
+-- Table structure for table `global_acc_reg_str`
 --
 
-CREATE TABLE IF NOT EXISTS `global_reg_value` (
-  `char_id` int(11) unsigned NOT NULL default '0',
-  `str` varchar(255) NOT NULL default '',
-  `value` varchar(255) NOT NULL default '0',
-  `type` tinyint(1) NOT NULL default '3',
+CREATE TABLE IF NOT EXISTS `global_acc_reg_str` (
   `account_id` int(11) unsigned NOT NULL default '0',
-  PRIMARY KEY  (`char_id`,`str`,`account_id`),
+  `key` varchar(32) binary NOT NULL default '',
+  `index` int(11) unsigned NOT NULL default '0',
+  `value` varchar(254) NOT NULL default '0',
+  PRIMARY KEY (`account_id`,`key`,`index`),
   KEY `account_id` (`account_id`)
 ) ENGINE=MyISAM;
 
@@ -395,6 +494,19 @@ CREATE TABLE IF NOT EXISTS `homunculus` (
   PRIMARY KEY  (`homun_id`)
 ) ENGINE=MyISAM;
 
+--
+-- Table structure for table `hotkey`
+--
+
+CREATE TABLE IF NOT EXISTS `hotkey` (
+	`char_id` INT(11) NOT NULL,
+	`hotkey` TINYINT(2) unsigned NOT NULL,
+	`type` TINYINT(1) unsigned NOT NULL default '0',
+	`itemskill_id` INT(11) unsigned NOT NULL default '0',
+	`skill_lvl` TINYINT(4) unsigned NOT NULL default '0',
+	PRIMARY KEY (`char_id`,`hotkey`)
+) ENGINE=MyISAM;
+
 -- 
 -- Table structure for table `interlog`
 --
@@ -403,6 +515,16 @@ CREATE TABLE IF NOT EXISTS `interlog` (
   `time` datetime NOT NULL default '0000-00-00 00:00:00',
   `log` varchar(255) NOT NULL default ''
 ) ENGINE=MyISAM; 
+
+--
+-- Table structure for table `interreg`
+--
+
+CREATE TABLE IF NOT EXISTS `interreg` (
+  `varname` varchar(11) NOT NULL,
+  `value` varchar(20) NOT NULL,
+   PRIMARY KEY (`varname`)
+) ENGINE=InnoDB;
 
 --
 -- Table structure for table `inventory`
@@ -474,35 +596,6 @@ CREATE TABLE IF NOT EXISTS `login` (
 INSERT INTO `login` (`account_id`, `userid`, `user_pass`, `sex`, `email`) VALUES ('1', 's1', 'p1', 'S','athena@athena.com');
 
 --
--- Table structure for table `mapreg`
---
-
-CREATE TABLE IF NOT EXISTS `mapreg` (
-  `varname` varchar(32) NOT NULL,
-  `index` int(11) unsigned NOT NULL default '0',
-  `value` varchar(255) NOT NULL,
-  KEY `varname` (`varname`),
-  KEY `index` (`index`)
-) ENGINE=MyISAM;
-
---
--- Table structure for table `sc_data`
---
-
-CREATE TABLE IF NOT EXISTS `sc_data` (
-  `account_id` int(11) unsigned NOT NULL,
-  `char_id` int(11) unsigned NOT NULL,
-  `type` smallint(11) unsigned NOT NULL,
-  `tick` int(11) NOT NULL,
-  `val1` int(11) NOT NULL default '0',
-  `val2` int(11) NOT NULL default '0',
-  `val3` int(11) NOT NULL default '0',
-  `val4` int(11) NOT NULL default '0',
-  KEY (`account_id`),
-  KEY (`char_id`)
-) ENGINE=MyISAM;
-
---
 -- Table structure for table `mail`
 --
 
@@ -530,6 +623,30 @@ CREATE TABLE IF NOT EXISTS `mail` (
   `bound` tinyint(1) unsigned NOT NULL default '0',
   PRIMARY KEY  (`id`)
 ) ENGINE=MyISAM;
+
+--
+-- Table structure for table `mapreg`
+--
+
+CREATE TABLE IF NOT EXISTS `mapreg` (
+  `varname` varchar(32) binary NOT NULL,
+  `index` int(11) unsigned NOT NULL default '0',
+  `value` varchar(255) NOT NULL,
+  PRIMARY KEY (`varname`,`index`)
+) ENGINE=MyISAM;
+
+--
+-- Table `market` for market shop persistency
+--
+
+CREATE TABLE IF NOT EXISTS `market` (
+  `name` varchar(32) NOT NULL DEFAULT '',
+  `nameid` SMALLINT(5) UNSIGNED NOT NULL,
+  `price` INT(11) UNSIGNED NOT NULL,
+  `amount` SMALLINT(5) UNSIGNED NOT NULL,
+  `flag` TINYINT(2) UNSIGNED NOT NULL DEFAULT '0',
+  PRIMARY KEY  (`name`,`nameid`)
+) ENGINE = MyISAM;
 
 --
 -- Table structure for table `memo`
@@ -574,6 +691,36 @@ CREATE TABLE IF NOT EXISTS `mercenary_owner` (
   `sword_calls` int(11) NOT NULL default '0',
   `sword_faith` int(11) NOT NULL default '0',
   PRIMARY KEY  (`char_id`)
+) ENGINE=MyISAM;
+
+--
+-- Table structure for table `sc_data`
+--
+
+CREATE TABLE IF NOT EXISTS `sc_data` (
+  `account_id` int(11) unsigned NOT NULL,
+  `char_id` int(11) unsigned NOT NULL,
+  `type` smallint(11) unsigned NOT NULL,
+  `tick` int(11) NOT NULL,
+  `val1` int(11) NOT NULL default '0',
+  `val2` int(11) NOT NULL default '0',
+  `val3` int(11) NOT NULL default '0',
+  `val4` int(11) NOT NULL default '0',
+  KEY (`account_id`),
+  KEY (`char_id`)
+) ENGINE=MyISAM;
+
+--
+-- Table structure for table `skillcooldown`
+--
+
+CREATE TABLE IF NOT EXISTS `skillcooldown` (
+  `account_id` int(11) unsigned NOT NULL,
+  `char_id` int(11) unsigned NOT NULL,
+  `skill` smallint(11) unsigned NOT NULL DEFAULT '0',
+  `tick` int(11) NOT NULL,
+  KEY `account_id` (`account_id`),
+  KEY `char_id` (`char_id`)
 ) ENGINE=MyISAM;
 
 --
@@ -695,29 +842,6 @@ CREATE TABLE IF NOT EXISTS `storage` (
 ) ENGINE=MyISAM;
 
 --
--- Table structure for table `interreg`
---
-
-CREATE TABLE IF NOT EXISTS `interreg` (
-  `varname` varchar(11) NOT NULL,
-  `value` varchar(20) NOT NULL,
-   PRIMARY KEY (`varname`)
-) ENGINE=InnoDB;
-
---
--- Table structure for table `bonus_script`
---
-
-CREATE TABLE IF NOT EXISTS `bonus_script` (
-  `char_id` INT(11) UNSIGNED NOT NULL,
-  `script` TEXT NOT NULL,
-  `tick` INT(11) UNSIGNED NOT NULL DEFAULT '0',
-  `flag` SMALLINT(5) UNSIGNED NOT NULL DEFAULT '0',
-  `type` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
-  `icon` SMALLINT(3) NOT NULL DEFAULT '-1'
-) ENGINE=InnoDB;
-
---
 -- Table structure for table `vending_items`
 --
 
@@ -748,49 +872,3 @@ CREATE TABLE IF NOT EXISTS `vendings` (
   `autotrade` tinyint(4) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM;
-
---
--- Table structure for table `buyingstore_items`
---
-
-CREATE TABLE IF NOT EXISTS `buyingstore_items` (
-  `buyingstore_id` int(10) unsigned NOT NULL,
-  `index` smallint(5) unsigned NOT NULL,
-  `item_id` int(10) unsigned NOT NULL,
-  `amount` smallint(5) unsigned NOT NULL,
-  `price` int(10) unsigned NOT NULL
-) ENGINE=MyISAM;
-
---
--- Table structure for table `buyingstores`
---
-
-CREATE TABLE IF NOT EXISTS `buyingstores` (
-  `id` int(10) unsigned NOT NULL,
-  `account_id` int(11) unsigned NOT NULL,
-  `char_id` int(10) unsigned NOT NULL,
-  `sex` enum('F','M') NOT NULL DEFAULT 'M',
-  `map` varchar(20) NOT NULL,
-  `x` smallint(5) unsigned NOT NULL,
-  `y` smallint(5) unsigned NOT NULL,
-  `title` varchar(80) NOT NULL,
-  `limit` int(10) unsigned NOT NULL,
-  `body_direction` CHAR( 1 ) NOT NULL DEFAULT '4',
-  `head_direction` CHAR( 1 ) NOT NULL DEFAULT '0',
-  `sit` CHAR( 1 ) NOT NULL DEFAULT '1',
-  `autotrade` tinyint(4) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=MyISAM;
-
---
--- Table `market` for market shop persistency
---
-
-CREATE TABLE IF NOT EXISTS `market` (
-  `name` varchar(32) NOT NULL DEFAULT '',
-  `nameid` SMALLINT(5) UNSIGNED NOT NULL,
-  `price` INT(11) UNSIGNED NOT NULL,
-  `amount` SMALLINT(5) UNSIGNED NOT NULL,
-  `flag` TINYINT(2) UNSIGNED NOT NULL DEFAULT '0',
-  PRIMARY KEY  (`name`,`nameid`)
-) ENGINE = MyISAM;

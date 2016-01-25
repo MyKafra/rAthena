@@ -15,6 +15,9 @@
 extern int login_fd; //login file descriptor
 extern int char_fd; //char file descriptor
 
+#define MAX_STARTPOINT 5
+#define MAX_STARTITEM 32
+
 enum E_CHARSERVER_ST {
 	CHARSERVER_ST_RUNNING = CORE_ST_LAST,
 	CHARSERVER_ST_STARTING,
@@ -40,7 +43,6 @@ struct Schema_Config {
 	char charlog_db[DB_NAME_LEN];
 	char storage_db[DB_NAME_LEN];
 	char interlog_db[DB_NAME_LEN];
-	char reg_db[DB_NAME_LEN];
 	char skill_db[DB_NAME_LEN];
 	char memo_db[DB_NAME_LEN];
 	char guild_db[DB_NAME_LEN];
@@ -65,9 +67,14 @@ struct Schema_Config {
 	char ragsrvinfo_db[DB_NAME_LEN];
 	char elemental_db[DB_NAME_LEN];
 	char bonus_script_db[DB_NAME_LEN];
+	char acc_reg_num_table[DB_NAME_LEN];
+	char acc_reg_str_table[DB_NAME_LEN];
+	char char_reg_str_table[DB_NAME_LEN];
+	char char_reg_num_table[DB_NAME_LEN];
 };
 extern struct Schema_Config schema_config;
 
+#if PACKETVER_SUPPORTS_PINCODE
 /// Pincode system
 enum pincode_state {
 	PINCODE_OK		= 0,
@@ -75,6 +82,10 @@ enum pincode_state {
 	PINCODE_NOTSET	= 2,
 	PINCODE_EXPIRED	= 3,
 	PINCODE_NEW		= 4,
+	PINCODE_ILLEGAL = 5,
+#if 0
+	PINCODE_KSSN	= 6, // Not supported since we do not store KSSN
+#endif
 	PINCODE_PASSED	= 7,
 	PINCODE_WRONG	= 8,
 	PINCODE_MAXSTATE
@@ -84,7 +95,11 @@ struct Pincode_Config {
 	int pincode_changetime;
 	int pincode_maxtry;
 	bool pincode_force;
+	bool pincode_allow_repeated;
+	bool pincode_allow_sequential;
 };
+#endif
+
 struct CharMove_Config {
 	bool char_move_enabled;
 	bool char_movetoused;
@@ -121,14 +136,18 @@ struct CharServ_Config {
 
 	struct CharMove_Config charmove_config;
 	struct Char_Config char_config;
+#if PACKETVER_SUPPORTS_PINCODE
 	struct Pincode_Config pincode_config;
+#endif
 
 	int save_log; // show loading/saving messages
 	int log_char;	// loggin char or not [devil]
 	int log_inter;	// loggin inter or not [devil]
 	int char_check_db;	///cheking sql-table at begining ?
 
-	struct point start_point; // Initial position the player will spawn on server
+	struct point start_point[MAX_STARTPOINT]; // Initial position the player will spawn on the server
+	short start_point_count; // Number of positions read
+	struct startitem start_items[MAX_STARTITEM]; // Initial items the player with spawn with on the server
 	int console;
 	int max_connect_user;
 	int gm_allow_group;
@@ -219,7 +238,7 @@ extern struct fame_list chemist_fame_list[MAX_FAME_LIST];
 extern struct fame_list taekwon_fame_list[MAX_FAME_LIST];
 
 #define DEFAULT_AUTOSAVE_INTERVAL 300*1000
-#define MAX_CHAR_BUF 144 //Max size (for WFIFOHEAD calls)
+#define MAX_CHAR_BUF 150 //Max size (for WFIFOHEAD calls)
 
 int char_search_mapserver(unsigned short map, uint32 ip, uint16 port);
 int char_lan_subnetcheck(uint32 ip);
@@ -233,6 +252,7 @@ void char_set_all_offline(int id);
 void char_disconnect_player(uint32 account_id);
 int char_chardb_waiting_disconnect(int tid, unsigned int tick, int id, intptr_t data);
 
+int char_mmo_gender(const struct char_session_data *sd, const struct mmo_charstatus *p, char sex);
 int char_mmo_char_tobuf(uint8* buffer, struct mmo_charstatus* p);
 int char_mmo_char_tosql(uint32 char_id, struct mmo_charstatus* p);
 int char_mmo_char_fromsql(uint32 char_id, struct mmo_charstatus* p, bool load_everything);
@@ -249,7 +269,6 @@ int char_child(int parent_id, int child_id);
 int char_family(int pl1,int pl2,int pl3);
 
 int char_request_accreg2(uint32 account_id, uint32 char_id);
-int char_save_accreg2(unsigned char* buf, int len);
 
 //extern bool char_gm_read;
 int char_loadName(uint32 char_id, char* name);

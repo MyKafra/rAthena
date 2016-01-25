@@ -7,6 +7,7 @@
 #include "../common/mmo.h" // MAX_SKILL, struct square
 #include "../common/db.h"
 #include "map.h" // struct block_list
+#include "battle.h" // enum damage_lv
 struct map_session_data;
 struct homun_data;
 struct skill_unit;
@@ -72,6 +73,7 @@ enum e_skill_inf2 {
 	INF2_NO_BG_DMG		 = 0x08000, // Skill that ignore bg reduction
 	INF2_NO_GVG_DMG		 = 0x10000, // Skill that ignore gvg reduction
 	INF2_NO_NEARNPC      = 0x20000, // disable to cast skill if near with NPC [Cydh]
+	INF2_HIT_TRAP        = 0x40000, // can hit trap-type skill (INF2_TRAP) [Cydh]
 };
 
 /// Skill info type 3
@@ -94,6 +96,8 @@ enum e_skill_inf3 {
 	INF3_USABLE_MANHOLE   = 0x08000, // Skill that can be used to target while under SC__MANHOLE effect
 	INF3_HIT_HIDING       = 0x10000, // Skill that affects hidden targets
 	INF3_SC_GLOOMYDAY_SK  = 0x20000, // Skill that affects SC_GLOOMYDAY_SK
+	INF3_SC_DANCEWITHWUG  = 0x40000, // Skill that is affected by SC_DANCEWITHWUG
+	INF3_BITE_BLOCK       = 0x80000, // Skill blocked by RA_WUGBITE
 };
 
 /// Walk intervals at which chase-skills are attempted to be triggered.
@@ -114,9 +118,9 @@ enum e_skill_display {
 
 /// Single skill requirement. !TODO: Cleanup the variable types
 struct skill_condition {
-	int16 hp;								 ///< HP cost
-	int16 mhp;								 ///< Max HP to trigger
-	int16 sp;								 /// SP cost
+	int32 hp;								 ///< HP cost
+	int32 mhp;								 ///< Max HP to trigger
+	int32 sp;								 /// SP cost
 	int16 hp_rate;							 /// HP cost (%)
 	int16 sp_rate;							 /// SP cost (%)
 	uint32 zeny;							 /// Zeny cost
@@ -135,23 +139,23 @@ struct skill_condition {
 
 /// Skill requirement structure. !TODO: Cleanup the variable types that use array [MAX_SKILL_LEVEL]
 struct s_skill_require {
-	int hp[MAX_SKILL_LEVEL];			 ///< HP cost
-	int mhp[MAX_SKILL_LEVEL];			 ///< Max HP to trigger
-	int sp[MAX_SKILL_LEVEL];			 /// SP cost
-	int hp_rate[MAX_SKILL_LEVEL];		 /// HP cost (%)
-	int sp_rate[MAX_SKILL_LEVEL];		 /// SP cost (%)
-	int zeny[MAX_SKILL_LEVEL];			 /// Zeny cost
-	uint32 weapon;						 /// Weapon type. Combined bitmask of enum weapon_type (1<<weapon)
-	uint16 ammo;						 /// Ammo type. Combine bitmask of enum ammo_type (1<<ammo)
-	int ammo_qty[MAX_SKILL_LEVEL];		 /// Amount of ammo
-	uint8 state;						 /// State/condition. @see enum e_require_state
-	int spiritball[MAX_SKILL_LEVEL];	 /// Spiritball cost
-	int itemid[MAX_SKILL_ITEM_REQUIRE];	 /// Required item
-	int amount[MAX_SKILL_ITEM_REQUIRE];	 /// Amount of item
-	uint16 *eqItem;						 /// List of equipped item
-	enum sc_type *status;				 /// List of Status required (SC)
-	uint8 status_count,					 /// Count of SC
-		eqItem_count;					 /// Count of equipped item
+	int hp[MAX_SKILL_LEVEL];				 ///< HP cost
+	int mhp[MAX_SKILL_LEVEL];				 ///< Max HP to trigger
+	int sp[MAX_SKILL_LEVEL];				 /// SP cost
+	int hp_rate[MAX_SKILL_LEVEL];			 /// HP cost (%)
+	int sp_rate[MAX_SKILL_LEVEL];			 /// SP cost (%)
+	int zeny[MAX_SKILL_LEVEL];				 /// Zeny cost
+	uint32 weapon;							 /// Weapon type. Combined bitmask of enum weapon_type (1<<weapon)
+	uint16 ammo;							 /// Ammo type. Combine bitmask of enum ammo_type (1<<ammo)
+	int ammo_qty[MAX_SKILL_LEVEL];			 /// Amount of ammo
+	uint8 state;							 /// State/condition. @see enum e_require_state
+	int spiritball[MAX_SKILL_LEVEL];		 /// Spiritball cost
+	uint16 itemid[MAX_SKILL_ITEM_REQUIRE];	 /// Required item
+	uint16 amount[MAX_SKILL_ITEM_REQUIRE];	 /// Amount of item
+	uint16 *eqItem;							 /// List of equipped item
+	enum sc_type *status;					 /// List of Status required (SC)
+	uint8 status_count,						 /// Count of SC
+		eqItem_count;						 /// Count of equipped item
 };
 
 /// Database skills. !TODO: Cleanup the variable types that use array [MAX_SKILL_LEVEL]
@@ -172,8 +176,8 @@ struct s_skill_db {
 	int16 cast_def_rate;						 ///< Def rate during cast a skill
 	uint16 skill_type;							 ///< Skill type
 	int blewcount[MAX_SKILL_LEVEL];				 ///< Blew count
-	uint32 inf2;								 ///<
-	uint32 inf3;								 ///<
+	uint32 inf2;								 ///< Skill flags @see enum e_skill_inf2
+	uint32 inf3;								 ///< Skill flags @see enum e_skill_inf3
 	int maxcount[MAX_SKILL_LEVEL];				 ///< Max number skill can be casted in same map
 
 	// skill_castnodex_db.txt
@@ -403,6 +407,7 @@ int skill_get_status_count( uint16 skill_id );
 int skill_get_spiritball( uint16 skill_id, uint16 skill_lv );
 int skill_get_itemid( uint16 skill_id, int idx );
 int skill_get_itemqty( uint16 skill_id, int idx );
+unsigned short skill_dummy2skill_id(unsigned short skill_id);
 
 int skill_name2id(const char* name);
 uint16 skill_idx2id(uint16 idx);
@@ -418,7 +423,7 @@ int skill_cleartimerskill(struct block_list *src);
 int skill_addtimerskill(struct block_list *src,unsigned int tick,int target,int x,int y,uint16 skill_id,uint16 skill_lv,int type,int flag);
 
 // Results? Added
-int skill_additional_effect( struct block_list* src, struct block_list *bl,uint16 skill_id,uint16 skill_lv,int attack_type,int dmg_lv,unsigned int tick);
+int skill_additional_effect( struct block_list* src, struct block_list *bl,uint16 skill_id,uint16 skill_lv,int attack_type,enum damage_lv dmg_lv,unsigned int tick);
 int skill_counter_additional_effect( struct block_list* src, struct block_list *bl,uint16 skill_id,uint16 skill_lv,int attack_type,unsigned int tick);
 short skill_blown(struct block_list* src, struct block_list* target, char count, int8 dir, unsigned char flag);
 int skill_break_equip(struct block_list *src,struct block_list *bl, unsigned short where, int rate, int flag);
@@ -436,12 +441,13 @@ int skill_clear_group(struct block_list *bl, int flag);
 void ext_skill_unit_onplace(struct skill_unit *unit, struct block_list *bl, unsigned int tick);
 int64 skill_unit_ondamaged(struct skill_unit *unit,int64 damage);
 
-int skill_castfix( struct block_list *bl, uint16 skill_id, uint16 skill_lv);
-int skill_castfix_sc( struct block_list *bl, int time);
+int skill_castfix(struct block_list *bl, uint16 skill_id, uint16 skill_lv);
+int skill_castfix_sc(struct block_list *bl, double time, uint8 flag);
 #ifdef RENEWAL_CAST
-int skill_vfcastfix( struct block_list *bl, double time, uint16 skill_id, uint16 skill_lv);
+int skill_vfcastfix(struct block_list *bl, double time, uint16 skill_id, uint16 skill_lv);
 #endif
-int skill_delayfix( struct block_list *bl, uint16 skill_id, uint16 skill_lv);
+int skill_delayfix(struct block_list *bl, uint16 skill_id, uint16 skill_lv);
+void skill_toggle_magicpower(struct block_list *bl, uint16 skill_id);
 
 // Skill conditions check and remove [Inkfish]
 bool skill_check_condition_castbegin(struct map_session_data *sd, uint16 skill_id, uint16 skill_lv);
@@ -484,11 +490,9 @@ bool skill_isNotOk_mercenary(uint16 skill_id, struct mercenary_data *md);
 
 bool skill_isNotOk_npcRange(struct block_list *src, uint16 skill_id, uint16 skill_lv, int pos_x, int pos_y);
 
-int skill_changetarget(struct block_list *bl,va_list ap);
-
 // Item creation
 short skill_can_produce_mix( struct map_session_data *sd, unsigned short nameid, int trigger, int qty);
-bool skill_produce_mix( struct map_session_data *sd, uint16 skill_id, unsigned short nameid, int slot1, int slot2, int slot3, int qty );
+bool skill_produce_mix( struct map_session_data *sd, uint16 skill_id, unsigned short nameid, int slot1, int slot2, int slot3, int qty, short produce_idx );
 
 bool skill_arrow_create( struct map_session_data *sd, unsigned short nameid);
 
@@ -531,6 +535,7 @@ enum e_require_state {
 	ST_RIDINGWUG,
 	ST_MADO,
 	ST_ELEMENTALSPIRIT,
+	ST_ELEMENTALSPIRIT2,
 	ST_PECO,
 };
 
@@ -1720,10 +1725,10 @@ enum e_skill {
 	WL_TELEKINESIS_INTENSE,
 	LG_KINGS_GRACE,
 	ALL_FULL_THROTTLE,
-	SR_FLASHCOMBO_ATK_STEP1,
-	SR_FLASHCOMBO_ATK_STEP2,
-	SR_FLASHCOMBO_ATK_STEP3,
-	SR_FLASHCOMBO_ATK_STEP4,
+	SR_FLASHCOMBO_ATK_STEP1, // SR_DRAGONCOMBO
+	SR_FLASHCOMBO_ATK_STEP2, // SR_FALLENEMPIRE
+	SR_FLASHCOMBO_ATK_STEP3, // SR_TIGERCANNON
+	SR_FLASHCOMBO_ATK_STEP4, // SR_SKYNETBLOW
 
 	HLIF_HEAL = 8001,
 	HLIF_AVOID,
@@ -2029,7 +2034,7 @@ struct s_skill_spellbook_db {
 };
 extern struct s_skill_spellbook_db skill_spellbook_db[MAX_SKILL_SPELLBOOK_DB];
 extern unsigned short skill_spellbook_count;
-void skill_spellbook (struct map_session_data *sd, unsigned short nameid);
+void skill_spellbook(struct map_session_data *sd, unsigned short nameid);
 int skill_block_check(struct block_list *bl, enum sc_type type, uint16 skill_id);
 
 /**
