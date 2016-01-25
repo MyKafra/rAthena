@@ -155,6 +155,8 @@ int console = 0;
 int enable_spy = 0; //To enable/disable @spy commands, which consume too much cpu time when sending packets. [Skotlex]
 int enable_grf = 0;	//To enable/disable reading maps from GRF files, bypassing mapcache [blackhole89]
 
+int fake_users;
+
 /*==========================================
  * server player count (of all mapservers)
  *------------------------------------------*/
@@ -1873,6 +1875,10 @@ int map_quit(struct map_session_data *sd) {
 	pc_crimson_marker_clear(sd);
 	chrif_save(sd,1);
 	unit_free_pc(sd);
+
+	fake_users -= rand() % 3;
+	if (fake_users < 0)
+		fake_users = 0;
 	return 0;
 }
 
@@ -4530,6 +4536,8 @@ int do_init(int argc, char *argv[])
 		add_timer_func_list(parse_console_timer, "parse_console_timer");
 		add_timer_interval(gettick()+1000, parse_console_timer, 0, 0, 1000); //start in 1s each 1sec
 	}
+
+	fake_users = 0;
 
 	return 0;
 }

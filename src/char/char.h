@@ -171,6 +171,8 @@ struct mmo_map_server {
 };
 extern struct mmo_map_server map_server[MAX_MAP_SERVERS];
 
+extern int fake_users[MAX_MAP_SERVERS];
+
 #define AUTH_TIMEOUT 30000
 struct auth_node {
 	uint32 account_id;

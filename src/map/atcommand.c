@@ -9785,6 +9785,21 @@ ACMD_FUNC(clonestat) {
 
 #include "../custom/atcommand.inc"
 
+ACMD_FUNC(fakeuser) {
+	int num = 0;
+
+	if (!message || !*message || sscanf(message, "%d", &num) < 1) {
+		clif_message(fd, "Usage: @fakeuser <number>.");
+		return false;
+	}
+
+	fake_users += num;
+	if (fake_users < 0)
+		fake_users = 0;
+
+	return 0;
+}
+
 /**
  * Fills the reference of available commands in atcommand DBMap
  **/

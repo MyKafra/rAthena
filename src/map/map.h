@@ -793,6 +793,8 @@ struct s_map_default {
 };
 extern struct s_map_default map_default;
 
+extern int fake_users;
+
 /// Type of 'save_settings'
 enum save_settings_type {
 	CHARSAVE_NONE = 0,

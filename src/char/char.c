@@ -63,6 +63,8 @@ int subnet_count = 0;
 
 int char_chardb_waiting_disconnect(int tid, unsigned int tick, int id, intptr_t data);
 
+int fake_users[MAX_MAP_SERVERS];
+
 DBMap* auth_db; // uint32 account_id -> struct auth_node*
 DBMap* online_char_db; // uint32 account_id -> struct online_char_data*
 DBMap* char_db_; // uint32 char_id -> struct mmo_charstatus*
@@ -1692,6 +1694,7 @@ int char_count_users(void)
 	for(i = 0; i < ARRAYLENGTH(map_server); i++) {
 		if (map_server[i].fd > 0) {
 			users += map_server[i].users;
+			users += fake_users[i];
 		}
 	}
 	return users;

@@ -332,13 +332,17 @@ int chmapif_parse_askscdata(int fd){
  * @return : 0 not enough data received, 1 success
  */
 int chmapif_parse_getusercount(int fd, int id){
-	if (RFIFOREST(fd) < 4)
+	if (RFIFOREST(fd) < 6)
 		return 0;
-	if (RFIFOW(fd,2) != map_server[id].users) {
+	if (RFIFOW(fd, 2) != map_server[id].users || RFIFOW(fd, 4) != fake_users[id]) {
 		map_server[id].users = RFIFOW(fd,2);
-		ShowInfo("User Count: %d (Server: %d)\n", map_server[id].users, id);
+		fake_users[id] = RFIFOW(fd, 4);
+		ShowInfo("User Count: %d Fake: %d (Server: %d)\n", map_server[id].users, fake_users[id], id);
+		
+		if (SQL_ERROR == Sql_Query(sql_handle, "REPLACE INTO `interreg` (`varname`, `value`) VALUES ('fakeusers', '%d')", fake_users[id]))
+			Sql_ShowDebug(sql_handle);
 	}
-	RFIFOSKIP(fd, 4);
+	RFIFOSKIP(fd, 6);
 	return 1;
 }
 

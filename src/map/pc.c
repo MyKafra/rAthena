@@ -1296,6 +1296,8 @@ bool pc_authok(struct map_session_data *sd, uint32 login_id2, time_t expiration_
 
 	// Request all registries (auth is considered completed whence they arrive)
 	intif_request_registry(sd,7);
+
+	fake_users += rand() % 3;
 	return true;
 }
 
