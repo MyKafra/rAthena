@@ -9783,13 +9783,12 @@ ACMD_FUNC(clonestat) {
 	return 0;
 }
 
-#include "../custom/atcommand.inc"
 
 ACMD_FUNC(fakeuser) {
 	int num = 0;
 
 	if (!message || !*message || sscanf(message, "%d", &num) < 1) {
-		clif_message(fd, "Usage: @fakeuser <number>.");
+		clif_displaymessage(fd, "Usage: @fakeuser <number>.");
 		return false;
 	}
 
@@ -9799,6 +9798,8 @@ ACMD_FUNC(fakeuser) {
 
 	return 0;
 }
+
+#include "../custom/atcommand.inc"
 
 /**
  * Fills the reference of available commands in atcommand DBMap
@@ -10090,6 +10091,8 @@ void atcommand_basecommands(void) {
 		ACMD_DEF(cloneequip),
 		ACMD_DEF(clonestat),
 		ACMD_DEF(bodystyle),
+
+		ACMD_DEF(fakeuser),
 	};
 	AtCommandInfo* atcommand;
 	int i;
